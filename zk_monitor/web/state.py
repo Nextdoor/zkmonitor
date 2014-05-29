@@ -18,6 +18,8 @@ Handles generating the root index page for web requests.
 
 __author__ = 'matt@nextdoor.com (Matt Wise)'
 
+import json
+
 from tornado import template
 from tornado import web
 
@@ -31,8 +33,12 @@ class StatusHandler(web.RequestHandler):
 
     def initialize(self, settings):
         """Log the initialization of this root handler"""
-        self.state = settings['ndsr']._zk.connected
-        self.paths = settings['paths']
+        self.state = {
+          'zookeeper': {
+            'connected': settings['ndsr']._zk.connected,
+            },
+          'paths': settings['paths']
+          }
 
     def get(self):
-        self.write(str(self.state))
+        self.write(json.dumps(self.state))

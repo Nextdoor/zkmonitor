@@ -1,4 +1,5 @@
 import mock
+import json
 from tornado import web
 from tornado import testing
 
@@ -23,9 +24,15 @@ class StatusHandlerIntegrationTests(testing.AsyncHTTPTestCase):
         return web.Application(URLS)
 
     @testing.gen_test
-    def testIndexIncludesVersion(self):
-        """Make sure the version number was presented properly"""
+    def testState(self):
+        """Make sure the returned state information is valid"""
         self.mocked_sr._zk.connected = True
         self.http_client.fetch(self.get_url('/'), self.stop)
         response = self.wait()
-        self.assertIn('True', response.body)
+
+        # Load the expected JSON response into a dict
+        body_to_dict = json.loads(response.body)
+
+        # Ensure the right keys are in it
+        self.assertEquals(body_to_dict['zookeeper']['connected'], True)
+        self.assertIn('/should_have_1', body_to_dict['paths'])
