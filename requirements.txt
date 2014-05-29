@@ -1,5 +1,6 @@
 # General App Requirements
 tornado==3.1.1
+PyYAML
 
 # Nextdoor Service Registry
 nd_service_registry
