@@ -31,8 +31,8 @@ log = logging.getLogger(__name__)
 def getApplication(ndsr, paths):
     # Group our passed in options into a common settings dict
     settings = {
-      'ndsr': ndsr,
-      'paths': paths,
+        'ndsr': ndsr,
+        'paths': paths,
     }
 
     # Default list of URLs provided by Hooky and links to their classes

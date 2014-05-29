@@ -20,10 +20,7 @@ __author__ = 'matt@nextdoor.com (Matt Wise)'
 
 import json
 
-from tornado import template
 from tornado import web
-
-from zk_monitor import utils
 
 from zk_monitor.version import __version__ as VERSION
 
@@ -34,11 +31,12 @@ class StatusHandler(web.RequestHandler):
     def initialize(self, settings):
         """Log the initialization of this root handler"""
         self.state = {
-          'zookeeper': {
-            'connected': settings['ndsr']._zk.connected,
-            },
-          'paths': settings['paths']
-          }
+            'zookeeper': {
+                'connected': settings['ndsr']._zk.connected,
+                },
+            'paths': settings['paths'],
+            'version': VERSION
+            }
 
     def get(self):
         self.write(json.dumps(self.state))

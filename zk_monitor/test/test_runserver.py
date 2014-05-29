@@ -4,7 +4,6 @@ import logging
 
 from tornado.testing import unittest
 
-from zk_monitor import utils
 from zk_monitor import runserver
 
 

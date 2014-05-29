@@ -4,4 +4,4 @@ python:
   - "pypy"
 install:
   - make zookeeper
-script: make integration
+script: make test

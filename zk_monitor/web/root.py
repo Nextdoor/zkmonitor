@@ -18,10 +18,7 @@ Handles generating the root index page for web requests.
 
 __author__ = 'matt@nextdoor.com (Matt Wise)'
 
-from tornado import template
 from tornado import web
-
-from zk_monitor import utils
 
 from zk_monitor.version import __version__ as VERSION
 
@@ -31,6 +28,7 @@ class RootHandler(web.RequestHandler):
 
     def initialize(self):
         """Log the initialization of this root handler"""
+        self.state = {'version': VERSION}
 
     def get(self):
-        self.write(VERSION)
+        self.write(self.state)

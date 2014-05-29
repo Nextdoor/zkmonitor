@@ -4,16 +4,15 @@ from tornado import web
 from tornado import testing
 
 from zk_monitor.web import state
-from zk_monitor.version import __version__ as VERSION
 
 
 class StatusHandlerIntegrationTests(testing.AsyncHTTPTestCase):
     def get_app(self):
         self.mocked_sr = mock.MagicMock()
         self.mocked_paths = {
-          '/should_have_1': [ { 'children': 1 } ],
-          '/should_have_2': [ { 'children': 2 } ],
-          '/should_have_0': [ { 'children': 0 } ],
+            '/should_have_1': [{'children': 1}],
+            '/should_have_2': [{'children': 2}],
+            '/should_have_0': [{'children': 0}],
         }
         self.settings = {
             'ndsr': self.mocked_sr,
@@ -36,3 +35,4 @@ class StatusHandlerIntegrationTests(testing.AsyncHTTPTestCase):
         # Ensure the right keys are in it
         self.assertEquals(body_to_dict['zookeeper']['connected'], True)
         self.assertIn('/should_have_1', body_to_dict['paths'])
+        self.assertEquals('0.0.1', body_to_dict['version'])

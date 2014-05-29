@@ -100,7 +100,7 @@ def getPathList(path):
     """
     paths = {}
 
-    if path == None:
+    if path is None:
         return paths
 
     try:
@@ -114,7 +114,7 @@ def getPathList(path):
 
 def main():
     # Set up logging
-    log = getRootLogger(options.level, options.syslog)
+    getRootLogger(options.level, options.syslog)
 
     # Prep the config objects required to start up our Application
     paths = getPathList(options.file)
