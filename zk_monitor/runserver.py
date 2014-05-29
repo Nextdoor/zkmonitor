@@ -20,6 +20,8 @@ __author__ = 'Matt Wise (matt@nextdoor.com)'
 
 from tornado import ioloop
 import optparse
+import nd_service_registry
+import yaml
 
 from zk_monitor import utils
 from zk_monitor.web import app
@@ -31,15 +33,27 @@ usage = 'usage: %prog <options>'
 parser = optparse.OptionParser(usage=usage, version=VERSION,
                                add_help_option=True)
 parser.set_defaults(verbose=True)
-parser.add_option('-p', '--port', dest='port',
-                  default='8080',
+
+# Zookeeper Connection Settings
+parser.add_option('-z', '--zookeeper', dest='zookeeper',
+                  default='localhost:2181',
+                  help='Zookeeper Server (def: localhost:2181)',)
+
+# Path to the Zookeeper node list to monitor.
+# This file should be in YAML format.
+parser.add_option('-f', '--file', dest='file',
+                  default=None,
+                  help='Path to YAML file with znodes to monitor.')
+
+# Web Server Config Settings
+parser.add_option('-p', '--port', dest='port', default='8080',
                   help='Port to listen to (def: 8080)',)
-parser.add_option('-l', '--level', dest="level",
-                  default='warn',
+parser.add_option('-l', '--level', dest="level", default='warn',
                   help='Set logging level (INFO|WARN|DEBUG|ERROR)')
 parser.add_option('-s', '--syslog', dest='syslog',
                   default=None,
                   help='Log to syslog. Supply facility name. (ie "local0")')
+
 (options, args) = parser.parse_args()
 
 
@@ -54,12 +68,60 @@ def getRootLogger(level, syslog):
     return utils.setupLogger(level=level_constant, syslog=syslog)
 
 
+def getServiceRegistry(server):
+    """Gets and returns a Service Registry object.
+
+    The connection to Zookeeper is done in the background, we do not wait
+    for the connection before finishing the app startup.
+
+    args:
+        server: String with the servername:port combination.
+
+    returns:
+        KazooServiceRegistry object
+    """
+    return nd_service_registry.KazooServiceRegistry(
+        server=server,
+        readonly=True,
+        timeout=1,
+        lazy=True)
+
+
+def getPathList(path):
+    """Reads the path supplied and returns a dictionary of config values.
+
+    Parses out bad options and throws warning messages as well.
+
+    args:
+        path: String value with path to the YAML file to load.
+
+    returns:
+        A dictionary based on the loaded YAML file.
+    """
+    paths = {}
+
+    if path == None:
+        return paths
+
+    try:
+        paths = yaml.load(open(path, 'r'))
+    except IOError, e:
+        print "WARNING: Could not load %s: %s" % (path, e)
+    except yaml.scanner.ScannerError, e:
+        print "WARNING: YAML File Formatting Error: %s" % e
+    return paths
+
+
 def main():
     # Set up logging
     log = getRootLogger(options.level, options.syslog)
 
+    # Prep the config objects required to start up our Application
+    paths = getPathList(options.file)
+    sr = getServiceRegistry(options.zookeeper)
+
     # Build the HTTP service listening to the port supplied
-    server = app.getApplication()
+    server = app.getApplication(sr, paths)
     server.listen(int(options.port))
     ioloop.IOLoop.instance().start()
 

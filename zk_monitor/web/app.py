@@ -23,20 +23,29 @@ from tornado import web
 
 from zk_monitor import utils
 from zk_monitor.web import root
+from zk_monitor.web import state
 
 log = logging.getLogger(__name__)
 
 
-def getApplication():
+def getApplication(ndsr, paths):
+    # Group our passed in options into a common settings dict
+    settings = {
+      'ndsr': ndsr,
+      'paths': paths,
+    }
+
     # Default list of URLs provided by Hooky and links to their classes
     URLS = [
         # Handle initial web clients at the root of our service.
         (r"/", root.RootHandler),
 
+        # Handle initial web clients at the root of our service.
+        (r"/status", state.StatusHandler, dict(settings=settings)),
+
         # Provide access to our static content
-        (r'/static/(.*)',
-         web.StaticFileHandler,
-         {'path': utils.getStaticPath()}),
+        (r'/static/(.*)', web.StaticFileHandler,
+            {'path': utils.getStaticPath()}),
 
         # Handle incoming hook requests
     ]
