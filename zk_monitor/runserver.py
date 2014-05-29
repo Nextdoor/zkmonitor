@@ -22,7 +22,7 @@ from tornado import ioloop
 import optparse
 
 from zk_monitor import utils
-#from zk_monitor.web import app
+from zk_monitor.web import app
 
 from version import __version__ as VERSION
 
