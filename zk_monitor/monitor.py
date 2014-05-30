@@ -112,3 +112,47 @@ class Monitor(object):
         for path in paths:
             log.debug('Asking to watch %s' % path)
             self._ndsr.get(path)
+
+    def _verifyCompliance(self, path):
+        """Verify whether a given path is currently within spec.
+
+        args:
+            path: The path to validate (must exist in self._paths)
+
+        returns:
+            True: Everything is happy
+
+            or
+
+            A string describing the failure.
+        """
+        # Begin with compliance being True
+        compliant = True
+
+        # Load up the requirements for this path
+        config = self._paths[path]
+
+        # If there is a minimum 'children' amount, check that.
+        if 'children' in config:
+            count = len(self._ndsr.get(path)['children'])
+            log.debug('Comparing %s min children (%s) to current count (%s).' %
+                      (path, config['children'], count))
+            if count < config['children']:
+                return ('Found children (%s) less than minimum (%s)' %
+                       (count, config['children']))
+
+        # Done checking things..
+        return compliant
+
+    def state(self):
+        """Returns a dict with our current status."""
+        # Begin our status dict
+        status = {}
+
+        # For every path we are watching, get the live compliance status
+        status['compliance'] = {}
+        for path in self._paths:
+            status['compliance'][path] = self._verifyCompliance(path)
+
+        # Return the whole thing
+        return status

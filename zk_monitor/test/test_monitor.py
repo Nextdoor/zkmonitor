@@ -66,3 +66,38 @@ class TestMonitor(unittest.TestCase):
         self.monitor._watchPaths(paths)
         expected_calls = [mock.call('/foo'), mock.call('/bar')]
         self.ndsr.get.assert_has_calls(expected_calls)
+
+    def testVerifyCompliance(self):
+        def side_effect(path):
+            data = {
+                '/foo': {'data': None, 'stat': None,
+                         'children': ['child1:123']},
+                '/bar': {'data': None, 'stat': None,
+                         'children': ['child1:123']},
+                '/baz': {'data': None, 'stat': None, 'children': []}
+            }
+            return data[path]
+        self.ndsr.get = side_effect
+
+        self.assertEquals(True, self.monitor._verifyCompliance('/foo'))
+        self.assertNotEquals(True, self.monitor._verifyCompliance('/bar'))
+        self.assertEquals(True, self.monitor._verifyCompliance('/baz'))
+
+    def testState(self):
+        def side_effect(path):
+            data = {
+                '/foo': {'data': None, 'stat': None,
+                         'children': ['child1:123']},
+                '/bar': {'data': None, 'stat': None,
+                         'children': ['child1:123']},
+                '/baz': {'data': None, 'stat': None, 'children': []}
+            }
+            return data[path]
+        self.ndsr.get = side_effect
+        ret_val = self.monitor.state()
+
+        self.assertTrue('compliance' in ret_val)
+        self.assertEquals(True, ret_val['compliance']['/foo'])
+        self.assertEquals('Found children (1) less than minimum (2)',
+                ret_val['compliance']['/bar'])
+        self.assertEquals(True, ret_val['compliance']['/baz'])
