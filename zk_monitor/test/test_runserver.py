@@ -35,15 +35,3 @@ class TestRunserver(unittest.TestCase):
     def testGetPathListWithNoneFile(self):
         """Test getPathList() method with default path of None"""
         self.assertEquals({}, runserver.getPathList(None))
-
-    def testGetServiceRegistry(self):
-        """Test getServiceRegistry() method"""
-        with mock.patch('nd_service_registry.KazooServiceRegistry') as m:
-            fake_ndsr_object = mock.MagicMock()
-            m.return_value = fake_ndsr_object
-            self.assertEquals(fake_ndsr_object,
-                              runserver.getServiceRegistry('unittest:123'))
-            m.assert_called_once_with(lazy=True,
-                                      readonly=True,
-                                      timeout=1,
-                                      server='unittest:123')

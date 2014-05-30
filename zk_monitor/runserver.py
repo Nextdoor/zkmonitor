@@ -20,10 +20,12 @@ __author__ = 'Matt Wise (matt@nextdoor.com)'
 
 from tornado import ioloop
 import optparse
+import logging
 import nd_service_registry
 import yaml
 
 from zk_monitor import utils
+from zk_monitor import monitor
 from zk_monitor.web import app
 
 from version import __version__ as VERSION
@@ -49,7 +51,7 @@ parser.add_option('-f', '--file', dest='file',
 parser.add_option('-p', '--port', dest='port', default='8080',
                   help='Port to listen to (def: 8080)',)
 parser.add_option('-l', '--level', dest="level", default='warn',
-                  help='Set logging level (INFO|WARN|DEBUG|ERROR)')
+                  help='Set nd_service_registry.shims level (INFO|WARN|DEBUG|ERROR)')
 parser.add_option('-s', '--syslog', dest='syslog',
                   default=None,
                   help='Log to syslog. Supply facility name. (ie "local0")')
@@ -66,25 +68,6 @@ def getRootLogger(level, syslog):
 
     # Set up the logger now
     return utils.setupLogger(level=level_constant, syslog=syslog)
-
-
-def getServiceRegistry(server):
-    """Gets and returns a Service Registry object.
-
-    The connection to Zookeeper is done in the background, we do not wait
-    for the connection before finishing the app startup.
-
-    args:
-        server: String with the servername:port combination.
-
-    returns:
-        KazooServiceRegistry object
-    """
-    return nd_service_registry.KazooServiceRegistry(
-        server=server,
-        readonly=True,
-        timeout=1,
-        lazy=True)
 
 
 def getPathList(path):
@@ -115,13 +98,19 @@ def getPathList(path):
 def main():
     # Set up logging
     getRootLogger(options.level, options.syslog)
+    logging.getLogger('nd_service_registry.shims').setLevel(logging.WARNING)
 
-    # Prep the config objects required to start up our Application
+    # Prep the config objects required to start up our web service
     paths = getPathList(options.file)
-    sr = getServiceRegistry(options.zookeeper)
+    sr = nd_service_registry.KazooServiceRegistry(
+        server=options.zookeeper,
+        readonly=True,
+        timeout=1,
+        lazy=True)
+    mon = monitor.Monitor(sr, paths)
 
     # Build the HTTP service listening to the port supplied
-    server = app.getApplication(sr, paths)
+    server = app.getApplication(sr, mon)
     server.listen(int(options.port))
     ioloop.IOLoop.instance().start()
 

@@ -28,11 +28,11 @@ from zk_monitor.web import state
 log = logging.getLogger(__name__)
 
 
-def getApplication(ndsr, paths):
+def getApplication(ndsr, monitor):
     # Group our passed in options into a common settings dict
     settings = {
         'ndsr': ndsr,
-        'paths': paths,
+        'monitor': monitor,
     }
 
     # Default list of URLs provided by Hooky and links to their classes
