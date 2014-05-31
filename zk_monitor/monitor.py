@@ -76,9 +76,8 @@ class Monitor(object):
         # if there is a children setting, ensure its a number
         if 'children' in config:
             if not isinstance(config['children'], int):
-                raise InvalidConfigException('Invalid children setting: %s' %
-                        config['children'])
-
+                raise InvalidConfigException(
+                    'Invalid children setting: %s' % config['children'])
 
     def _validatePaths(self, paths):
         """Validate a dict of paths/configs.
@@ -143,7 +142,7 @@ class Monitor(object):
                       (path, config['children'], count))
             if count < config['children']:
                 return ('Found children (%s) less than minimum (%s)' %
-                       (count, config['children']))
+                        (count, config['children']))
 
         # Done checking things..
         return compliant

@@ -10,9 +10,9 @@ class TestMonitor(unittest.TestCase):
     def setUp(self):
         self.ndsr = mock.MagicMock()
         self.paths = {
-          '/foo': { 'children': 1 },
-          '/bar': { 'children': 2 },
-          '/baz': None }
+            '/foo': {'children': 1},
+            '/bar': {'children': 2},
+            '/baz': None}
         self.monitor = monitor.Monitor(self.ndsr, self.paths)
 
     def testInit(self):
@@ -29,17 +29,16 @@ class TestMonitor(unittest.TestCase):
         self.assertEquals(None, self.monitor._validateConfig([]))
 
         # Should return properly if we supply an integer as a config setting
-        config = { 'children': 1 }
+        config = {'children': 1}
         self.assertEquals(None, self.monitor._validateConfig(config))
 
         # Should raise an exception if we pass in an invalid children setting
-        config = { 'children': 'should fail' }
+        config = {'children': 'should fail'}
         self.assertRaises(monitor.InvalidConfigException,
                           self.monitor._validateConfig, config)
-        config = { 'children': None }
+        config = {'children': None}
         self.assertRaises(monitor.InvalidConfigException,
                           self.monitor._validateConfig, config)
-
 
     def testValidatePaths(self):
         # Should return right away if the config is empty
@@ -48,21 +47,21 @@ class TestMonitor(unittest.TestCase):
 
         # Should return properly if we supply an integer as a config setting
         config = {
-          '/foo': { 'children': 1 },
-          '/bar': { 'children': 2 },
-          '/baz': { } }
+            '/foo': {'children': 1},
+            '/bar': {'children': 2},
+            '/baz': {}}
         self.assertEquals(None, self.monitor._validatePaths(config))
 
         # Should raise an exception if we pass in an invalid children setting
         config = {
-          '/foo': { 'children': 'invalid' },
-          '/bar': { 'children': 2 },
-          '/baz': { } }
+            '/foo': {'children': 'invalid'},
+            '/bar': {'children': 2},
+            '/baz': {}}
         self.assertRaises(monitor.InvalidConfigException,
                           self.monitor._validatePaths, config)
 
     def testWatchPaths(self):
-        paths = [ '/foo', '/bar' ]
+        paths = ['/foo', '/bar']
         self.monitor._watchPaths(paths)
         expected_calls = [mock.call('/foo'), mock.call('/bar')]
         self.ndsr.get.assert_has_calls(expected_calls)
@@ -99,5 +98,5 @@ class TestMonitor(unittest.TestCase):
         self.assertTrue('compliance' in ret_val)
         self.assertEquals(True, ret_val['compliance']['/foo'])
         self.assertEquals('Found children (1) less than minimum (2)',
-                ret_val['compliance']['/bar'])
+                          ret_val['compliance']['/bar'])
         self.assertEquals(True, ret_val['compliance']['/baz'])

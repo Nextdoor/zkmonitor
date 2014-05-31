@@ -51,7 +51,7 @@ parser.add_option('-f', '--file', dest='file',
 parser.add_option('-p', '--port', dest='port', default='8080',
                   help='Port to listen to (def: 8080)',)
 parser.add_option('-l', '--level', dest="level", default='warn',
-                  help='Set nd_service_registry.shims level (INFO|WARN|DEBUG|ERROR)')
+                  help='Set logging level (INFO|WARN|DEBUG|ERROR)')
 parser.add_option('-s', '--syslog', dest='syslog',
                   default=None,
                   help='Log to syslog. Supply facility name. (ie "local0")')
