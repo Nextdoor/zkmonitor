@@ -14,8 +14,6 @@
 
 import logging
 
-from tornado import gen
-
 log = logging.getLogger(__name__)
 
 
