@@ -34,9 +34,7 @@ class StatusHandler(web.RequestHandler):
             'zookeeper': {
                 'connected': settings['ndsr']._zk.connected,
                 },
-            'monitor': {
-                'state': settings['monitor']._state,
-                },
+            'monitor': settings['monitor'].state(),
             'version': VERSION
             }
 

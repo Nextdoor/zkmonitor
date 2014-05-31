@@ -12,7 +12,7 @@ class TestMonitor(unittest.TestCase):
         self.paths = {
           '/foo': { 'children': 1 },
           '/bar': { 'children': 2 },
-          '/baz': { } }
+          '/baz': None }
         self.monitor = monitor.Monitor(self.ndsr, self.paths)
 
     def testInit(self):

@@ -132,6 +132,10 @@ class Monitor(object):
         # Load up the requirements for this path
         config = self._paths[path]
 
+        # If the config is empty, then there is no compliance testing.
+        if not config:
+            return compliant
+
         # If there is a minimum 'children' amount, check that.
         if 'children' in config:
             count = len(self._ndsr.get(path)['children'])
