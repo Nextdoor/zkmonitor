@@ -10,13 +10,7 @@ class StatusHandlerIntegrationTests(testing.AsyncHTTPTestCase):
     def get_app(self):
         self.mocked_sr = mock.MagicMock()
         self.mocked_monitor = mock.MagicMock()
-        self.mocked_monitor._state = True
-
-#        self.mocked_paths = {
-##            '/should_have_1': [{'children': 1}],
-#            '/should_have_2': [{'children': 2}],
-#            '/should_have_0': [{'children': 0}],
-#        }
+        self.mocked_monitor.state.return_value = 'test'
 
         self.settings = {
             'ndsr': self.mocked_sr,
@@ -37,6 +31,6 @@ class StatusHandlerIntegrationTests(testing.AsyncHTTPTestCase):
         body_to_dict = json.loads(response.body)
 
         # Ensure the right keys are in it
-        self.assertEquals(body_to_dict['zookeeper']['connected'], True)
-#        self.assertIn('/should_have_1', body_to_dict['paths'])
+        self.assertEquals(True, body_to_dict['zookeeper']['connected'])
+        self.assertEquals('test', body_to_dict['monitor'])
         self.assertEquals('0.0.1', body_to_dict['version'])
