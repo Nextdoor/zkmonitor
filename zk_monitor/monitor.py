@@ -36,6 +36,7 @@ class Monitor(object):
         """
         log.debug('Initializing Monitor with Service Registry %s' % ndsr)
         self._ndsr = ndsr
+        self._paths = paths
 
         # Create our Alerter object. All notifications of path compliance
         # being out of spec are sent off to an Alerter.
@@ -50,7 +51,6 @@ class Monitor(object):
 
         # Generate watches on those paths
         self._watchPaths(paths.keys())
-        self._paths = paths
 
     def _stateListener(self, state):
         """Executed any time the connection state changes.
@@ -113,9 +113,27 @@ class Monitor(object):
         args:
             paths: A list of paths to watch
         """
+
+        # Now begin watching our paths, using the above callback
+        # function when a path is updated.
         for path in paths:
             log.debug('Asking to watch %s' % path)
-            self._ndsr.get(path)
+            self._ndsr.get(path, callback=self._pathUpdateCallback)
+
+    def _pathUpdateCallback(self, data):
+        """Quick method executed when one of our watched paths
+        (defined below) is updated. This method receives updates
+        from the Service Registry when a path changes, calls out
+        to the _verifyCompliance() method, and if fires off an
+        alert if appropriate.
+
+        args:
+            data: The data returned by the Service Registry.
+        """
+        log.info('Path change detected at %s' % data['path'])
+
+        if self._verifyCompliance(data['path']) is not True:
+            self._alerter.alert(self._verifyCompliance(data['path']))
 
     def _verifyCompliance(self, path):
         """Verify whether a given path is currently within spec.

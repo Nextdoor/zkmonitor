@@ -7,15 +7,18 @@ from zk_monitor import monitor
 
 class TestMonitor(unittest.TestCase):
     def setUp(self):
-        self.ndsr = mock.MagicMock()
+        self.mocked_ndsr = mock.MagicMock()
+        self.mocked_alerter = mock.MagicMock()
         self.paths = {
             '/foo': {'children': 1},
             '/bar': {'children': 2},
             '/baz': None}
-        self.monitor = monitor.Monitor(self.ndsr, self.paths)
+        self.monitor = monitor.Monitor(self.mocked_ndsr, self.paths)
+        self.monitor._alerter = self.mocked_alerter
 
     def testInit(self):
-        self.ndsr.get_state.assert_called_with(self.monitor._stateListener)
+        self.mocked_ndsr.get_state.assert_called_with(
+            self.monitor._stateListener)
 
     def testStateListener(self):
         test_state = 'test'
@@ -62,8 +65,23 @@ class TestMonitor(unittest.TestCase):
     def testWatchPaths(self):
         paths = ['/foo', '/bar']
         self.monitor._watchPaths(paths)
-        expected_calls = [mock.call('/foo'), mock.call('/bar')]
-        self.ndsr.get.assert_has_calls(expected_calls)
+        expected_calls = [
+            mock.call('/foo', callback=self.monitor._pathUpdateCallback),
+            mock.call('/bar', callback=self.monitor._pathUpdateCallback)
+        ]
+        self.mocked_ndsr.get.assert_has_calls(expected_calls)
+
+    def testPathUpdateCallback(self):
+        def side_effect(path):
+            data = {
+                '/bar': {'data': None, 'stat': None,
+                         'children': ['child1:123']},
+            }
+            return data[path]
+        self.mocked_ndsr.get = side_effect
+        self.monitor._pathUpdateCallback({'path': '/bar'})
+        self.mocked_alerter.alert.assert_called_with(
+            'Found children (1) less than minimum (2)')
 
     def testVerifyCompliance(self):
         def side_effect(path):
@@ -75,7 +93,7 @@ class TestMonitor(unittest.TestCase):
                 '/baz': {'data': None, 'stat': None, 'children': []}
             }
             return data[path]
-        self.ndsr.get = side_effect
+        self.mocked_ndsr.get = side_effect
 
         self.assertEquals(True, self.monitor._verifyCompliance('/foo'))
         self.assertNotEquals(True, self.monitor._verifyCompliance('/bar'))
@@ -91,7 +109,7 @@ class TestMonitor(unittest.TestCase):
                 '/baz': {'data': None, 'stat': None, 'children': []}
             }
             return data[path]
-        self.ndsr.get = side_effect
+        self.mocked_ndsr.get = side_effect
         ret_val = self.monitor.state()
 
         self.assertTrue('compliance' in ret_val)

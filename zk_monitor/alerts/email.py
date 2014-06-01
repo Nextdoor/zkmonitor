@@ -21,3 +21,6 @@ log = logging.getLogger(__name__)
 
 class EmailAlerter(base.AlerterBase):
     """Nifty"""
+
+    def _alert(self, message):
+        log.error('TODO: Implement _alert: %s' % message)
