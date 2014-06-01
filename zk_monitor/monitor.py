@@ -14,6 +14,8 @@
 
 import logging
 
+from zk_monitor.alerts import email
+
 log = logging.getLogger(__name__)
 
 
@@ -34,6 +36,11 @@ class Monitor(object):
         """
         log.debug('Initializing Monitor with Service Registry %s' % ndsr)
         self._ndsr = ndsr
+
+        # Create our Alerter object. All notifications of path compliance
+        # being out of spec are sent off to an Alerter.
+        # TODO(Fix this path)
+        self._alerter = email.EmailAlerter(ndsr, '/test')
 
         # Validate the supplied path configs
         self._validatePaths(paths)
@@ -149,6 +156,9 @@ class Monitor(object):
         """Returns a dict with our current status."""
         # Begin our status dict
         status = {}
+
+        # Get our Alerter status
+        status['alerter'] = self._alerter.status()
 
         # For every path we are watching, get the live compliance status
         status['compliance'] = {}
