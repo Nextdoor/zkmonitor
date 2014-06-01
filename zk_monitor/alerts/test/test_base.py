@@ -19,3 +19,24 @@ class TestBaseAlerter(unittest.TestCase):
 
     def testStatus(self):
         self.assertTrue('alerting' in self.alerter.status())
+
+    def testAlert(self):
+        # Mock up up the AlerterBase self._alert() method because it doesn't
+        # actually exist -- its meant to be created by the Alerter that
+        # subclasses from the AlerterBase.
+        self.alerter._alert = mock.MagicMock()
+
+        # Disable our alerting
+        self.mocked_lock.status.return_value = False
+
+        # Fire an alert -- it shouldn't do anything
+        self.alerter.alert('unittest-disabled')
+
+        # Set our alertering status to True
+        self.mocked_lock.status.return_value = True
+
+        # Fire off an alert?
+        self.alerter.alert('unittest')
+
+        # Now validate that only one alert was sent
+        self.alerter._alert.assert_called_once_with('unittest')

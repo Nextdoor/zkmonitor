@@ -67,3 +67,21 @@ class AlerterBase(object):
         return {
             'alerting': self._lock.status()
         }
+
+    def alert(self, message):
+        """Fires off an Alert.
+
+        If this Alerter object currently owns the 'alert lock', then
+        this function calls the self._alert() method of the Alerter
+        to send off a message.
+
+        args:
+            message: String to send
+        """
+        if not self._lock.status():
+            log.debug('Not the primary alerter, not sending message: %s' %
+                      message)
+            return
+
+        log.warning('Firing Alert: %s' % message)
+        self._alert(message)
