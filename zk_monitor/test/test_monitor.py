@@ -15,9 +15,9 @@ class TestMonitor(unittest.TestCase):
             '/bar': {'children': 2},
             '/baz': None}
         self.monitor = monitor.Monitor(
-                self.mocked_ndsr,
-                self.mocked_cs,
-                self.paths)
+            self.mocked_ndsr,
+            self.mocked_cs,
+            self.paths)
         self.monitor._alerter = self.mocked_alerter
 
     def testInit(self):

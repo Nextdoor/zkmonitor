@@ -49,7 +49,6 @@ class State(object):
         # in a degraded state (no cluster support).
         self._register_myself()
 
-
     def _register_myself(self):
         """Register myself as a ZK-Monitor agent."""
         self._ndsr.set_node('%s/agents/%s' % (self._path, self._name))

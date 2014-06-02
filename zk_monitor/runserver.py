@@ -131,8 +131,8 @@ def main():
     # Load up our cluster configuration state engine. This object provides
     # access to a store cluster-wide configuration settings and state
     # within Zookeeper itself.
-    cluster_workspace = '%s/%s' % (options.cluster_prefix, options.cluster_name)
-    cs = cluster.State(sr, cluster_workspace)
+    workspace = '%s/%s' % (options.cluster_prefix, options.cluster_name)
+    cs = cluster.State(sr, workspace)
 
     # Kick off our main monitoring object
     mon = monitor.Monitor(sr, cs, paths)
