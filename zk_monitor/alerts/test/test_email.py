@@ -39,7 +39,7 @@ class TestEmailAlert(unittest.TestCase):
 
     @mock.patch('tornadomail.message.EmailMessage')
     def testInit(self, mocked_message):
-        alert = email.EmailAlert(self.msg, self.body, self.email, self.conn)
+        email.EmailAlert(self.msg, self.body, self.email, self.conn)
         mocked_message.assert_called_with(
             subject=self.msg,
             body=self.body,

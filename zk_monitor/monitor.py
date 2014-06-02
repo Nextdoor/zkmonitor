@@ -137,7 +137,6 @@ class Monitor(object):
 
         compliant = self._verifyCompliance(path)
 
-
         # TODO: Make this idempotent -- we shouldn't fire an alert multiple
         # times, but Zookeeper/Kazoo have a tendency to fire off callbacks
         # multiple times. Need to maintain state somewhere.

@@ -86,7 +86,7 @@ class TestMonitor(unittest.TestCase):
         self.monitor._pathUpdateCallback({'path': '/bar'})
         self.mocked_alerter.alert.assert_called_with(
             message=('/bar failed check: Found children (1) '
-                    'less than minimum (2)'),
+                     'less than minimum (2)'),
             params=None)
 
     def testPathUpdateCallbackWithAlerterParams(self):
@@ -100,7 +100,7 @@ class TestMonitor(unittest.TestCase):
         self.monitor._pathUpdateCallback({'path': '/foo'})
         self.mocked_alerter.alert.assert_called_with(
             message=('/foo failed check: Found children (0) '
-                    'less than minimum (1)'),
+                     'less than minimum (1)'),
             params={'email': 'unit@test.com'})
 
     def testVerifyCompliance(self):
