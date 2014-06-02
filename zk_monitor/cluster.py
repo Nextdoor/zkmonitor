@@ -16,8 +16,6 @@ import logging
 import platform
 import os
 
-from nd_service_registry import exceptions
-
 log = logging.getLogger(__name__)
 
 
