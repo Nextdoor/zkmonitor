@@ -23,7 +23,7 @@ class AlerterBase(object):
     This is not meant to be instantiated, but provides the common public
     functions for any Alerter object and the general behavior we expect.
     """
-    def __init__(self, ndsr, path):
+    def __init__(self, cs):
         """Initialize the Alerter.
 
         We only allow a single Alerter to operate in a given cluster of
@@ -35,25 +35,23 @@ class AlerterBase(object):
         active at ay time.
 
         args:
-            ndsr: A KazooServiceRegistry object
-            path: A unique path used as a Lock path to determine which
-                  Alerter object is allowed to send alerts.
+            cs: cluster.State object
         """
-        log.debug('Initializing Alerter with Service Registry %s' % ndsr)
-        self._ndsr = ndsr
+        log.debug('Initializing Alerter')
+        self._cs = cs
 
         # Begin getting our lock. If the lock is busy, we'll wait silently
         # for the lock to be acquired before se send out alerts.
-        self._begin_lock(path)
+        self._begin_lock()
 
-    def _begin_lock(self, path):
+    def _begin_lock(self):
         """Begin monitoring the lock status path.
 
         args:
             path: Zookeeper path to find our lock in.
         """
-        log.debug('Attempting to lock %s' % path)
-        self._lock = self._ndsr.get_lock(path, wait=0)
+        log.debug('Attempting to acquire lock for sending alerts.')
+        self._lock = self._cs.getLock('alerter')
         self._lock.acquire()
 
     def status(self):

@@ -25,23 +25,25 @@ class InvalidConfigException(Exception):
 
 class Monitor(object):
     """Main object used for monitoring nodes in Zookeeper."""
-    def __init__(self, ndsr, paths):
+    def __init__(self, ndsr, cs, paths):
         """Initialize the object and our watches.
 
         args:
             ndsr: A KazooServiceRegistry object
+            cs: cluster.State object
             paths: A dict of paths to monitor.
                    eg: { '/foo': { 'children': 1 },
                          '/bar': { 'children': 2 } }
         """
         log.debug('Initializing Monitor with Service Registry %s' % ndsr)
         self._ndsr = ndsr
+        self._cs = cs
         self._paths = paths
 
         # Create our Alerter object. All notifications of path compliance
         # being out of spec are sent off to an Alerter.
         # TODO(Fix this path)
-        self._alerter = email.EmailAlerter(ndsr, '/test')
+        self._alerter = email.EmailAlerter(self._cs)
 
         # Validate the supplied path configs
         self._validatePaths(paths)

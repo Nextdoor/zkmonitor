@@ -8,12 +8,16 @@ from zk_monitor import monitor
 class TestMonitor(unittest.TestCase):
     def setUp(self):
         self.mocked_ndsr = mock.MagicMock()
+        self.mocked_cs = mock.MagicMock()
         self.mocked_alerter = mock.MagicMock()
         self.paths = {
             '/foo': {'children': 1},
             '/bar': {'children': 2},
             '/baz': None}
-        self.monitor = monitor.Monitor(self.mocked_ndsr, self.paths)
+        self.monitor = monitor.Monitor(
+                self.mocked_ndsr,
+                self.mocked_cs,
+                self.paths)
         self.monitor._alerter = self.mocked_alerter
 
     def testInit(self):

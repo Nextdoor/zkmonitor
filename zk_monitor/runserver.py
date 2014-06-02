@@ -24,11 +24,15 @@ import logging
 import nd_service_registry
 import yaml
 
+from zk_monitor import cluster
 from zk_monitor import utils
 from zk_monitor import monitor
 from zk_monitor.web import app
 
 from version import __version__ as VERSION
+
+log = logging.getLogger(__name__)
+
 
 # Initial option handler to set up the basic application environment.
 usage = 'usage: %prog <options>'
@@ -39,7 +43,22 @@ parser.set_defaults(verbose=True)
 # Zookeeper Connection Settings
 parser.add_option('-z', '--zookeeper', dest='zookeeper',
                   default='localhost:2181',
-                  help='Zookeeper Server (def: localhost:2181)',)
+                  help='Zookeeper Server (def: localhost:2181)')
+parser.add_option('--zookeeper_user', dest='zookeeper_user',
+                  default=None,
+                  help='Zookeeper ACL Username')
+parser.add_option('--zookeeper_pass', dest='zookeeper_pass',
+                  default=None,
+                  help='Zookeeper ACL Password')
+
+# Zookeeper Connection Settings
+parser.add_option('-c', '--cluster_name', dest='cluster_name',
+                  default='zkmonitor',
+                  help='Unique cluster name (ie, prod-zookeeper-monitor)')
+parser.add_option('--cluster_prefix', dest='cluster_prefix',
+                  default='/zk-monitor',
+                  help='Prefix path in Zookeeper for all Zk-Monitor Clusters')
+
 
 # Path to the Zookeeper node list to monitor.
 # This file should be in YAML format.
@@ -49,7 +68,7 @@ parser.add_option('-f', '--file', dest='file',
 
 # Web Server Config Settings
 parser.add_option('-p', '--port', dest='port', default='8080',
-                  help='Port to listen to (def: 8080)',)
+                  help='Port to listen to (def: 8080)')
 parser.add_option('-l', '--level', dest="level", default='warn',
                   help='Set logging level (INFO|WARN|DEBUG|ERROR)')
 parser.add_option('-s', '--syslog', dest='syslog',
@@ -95,6 +114,7 @@ def getPathList(path):
     return paths
 
 
+# TODO: Refactor this main() class so its more testable
 def main():
     # Set up logging
     getRootLogger(options.level, options.syslog)
@@ -104,10 +124,18 @@ def main():
     paths = getPathList(options.file)
     sr = nd_service_registry.KazooServiceRegistry(
         server=options.zookeeper,
-        readonly=True,
+        readonly=False,
         timeout=1,
         lazy=True)
-    mon = monitor.Monitor(sr, paths)
+
+    # Load up our cluster configuration state engine. This object provides
+    # access to a store cluster-wide configuration settings and state
+    # within Zookeeper itself.
+    cluster_workspace = '%s/%s' % (options.cluster_prefix, options.cluster_name)
+    cs = cluster.State(sr, cluster_workspace)
+
+    # Kick off our main monitoring object
+    mon = monitor.Monitor(sr, cs, paths)
 
     # Build the HTTP service listening to the port supplied
     server = app.getApplication(sr, mon)
