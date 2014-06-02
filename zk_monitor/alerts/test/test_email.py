@@ -44,7 +44,7 @@ class TestEmailAlert(unittest.TestCase):
             subject=self.msg,
             body=self.body,
             to=[self.email],
-            from_email='zk-monitor',
+            from_email='zk_monitor',
             connection=self.conn)
 
     @mock.patch('tornadomail.message.EmailMessage')

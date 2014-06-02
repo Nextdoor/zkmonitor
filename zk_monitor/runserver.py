@@ -56,8 +56,8 @@ parser.add_option('-c', '--cluster_name', dest='cluster_name',
                   default='zkmonitor',
                   help='Unique cluster name (ie, prod-zookeeper-monitor)')
 parser.add_option('--cluster_prefix', dest='cluster_prefix',
-                  default='/zk-monitor',
-                  help='Prefix path in Zookeeper for all Zk-Monitor Clusters')
+                  default='/zk_monitor',
+                  help='Prefix path in Zookeeper for all zk_monitor clusters')
 
 
 # Path to the Zookeeper node list to monitor.

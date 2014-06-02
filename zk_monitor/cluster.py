@@ -38,7 +38,7 @@ class State(object):
         self._ndsr = ndsr
         log.info('Initializing Cluster State Engine at %s' % self._path)
 
-        # Generate a unique name for this particular process of zk-monitor
+        # Generate a unique name for this particular process of zk_monitor
         self._name = '%s-%s' % (platform.node(), os.getpid())
 
         # Register ourselves as a monitoring agent. If this fails with a
@@ -48,7 +48,7 @@ class State(object):
         self._register_myself()
 
     def _register_myself(self):
-        """Register myself as a ZK-Monitor agent."""
+        """Register myself as a zk_monitor agent."""
         self._ndsr.set_node('%s/agents/%s' % (self._path, self._name))
 
     def getLock(self, name):

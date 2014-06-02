@@ -84,7 +84,7 @@ class EmailAlert(object):
         msg = message.EmailMessage(
             subject=subject,
             body=body,
-            from_email='zk-monitor',
+            from_email='zk_monitor',
             to=[email],
             connection=conn)
         msg.send(callback=self._alertSent)

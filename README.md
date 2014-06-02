@@ -32,7 +32,7 @@ CLI arguments:
       -c CLUSTER_NAME, --cluster_name=CLUSTER_NAME
                             Unique cluster name (ie, prod-zookeeper-monitor)
       --cluster_prefix=CLUSTER_PREFIX
-                            Prefix path in Zookeeper for all Zk-Monitor Clusters
+                            Prefix path in Zookeeper for all zk_monitor clusters
       -f FILE, --file=FILE  Path to YAML file with znodes to monitor.
       -p PORT, --port=PORT  Port to listen to (def: 8080)
       -l LEVEL, --level=LEVEL
