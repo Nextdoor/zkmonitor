@@ -13,7 +13,7 @@ ZOOKEEPER_URL = http://apache.osuosl.org/zookeeper/zookeeper-$(ZOOKEEPER_VERSION
 all: build
 
 build:
-	pip install -r requirements.txt
+	pip install --allow-unverified tornadomail --allow-external tornadomail -r requirements.txt
 	pip install -r requirements.test.txt
 
 clean:
