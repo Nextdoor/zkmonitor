@@ -38,4 +38,4 @@ class TestBaseAlerter(unittest.TestCase):
         self.alerter.alert('unittest')
 
         # Now validate that only one alert was sent
-        self.alerter._alert.assert_called_once_with('unittest')
+        self.alerter._alert.assert_called_once_with('unittest', params=None)

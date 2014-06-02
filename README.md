@@ -44,11 +44,23 @@ The list of paths that you want to monitor are supplied via a YAML
 formatted configuration file. Here's an example file:
 
     /services/foo/min_1:
+      alerter:
+        email: you@home.com
       children: 1
     /services/foo/min_0:
+      alerter:
+        email: your_buddy@home.com
       children: 0
     /services/foo/min_3:
       children: 3
+
+### Alerter Configuration
+
+In the above example, you'll see that two of the paths have an 'alerter/email'
+parameter configured. With this in place, any path spec violations will result
+in an email fired off to that address. The third path does not have any
+settings, which means that no alert will actually be sent off in the event of
+a spec violation.
 
 ### Simple Execution
 

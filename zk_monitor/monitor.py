@@ -132,10 +132,25 @@ class Monitor(object):
         args:
             data: The data returned by the Service Registry.
         """
-        log.info('Path change detected at %s' % data['path'])
+        path = data['path']
+        log.info('Path change detected at %s' % path)
 
-        if self._verifyCompliance(data['path']) is not True:
-            self._alerter.alert(self._verifyCompliance(data['path']))
+        compliant = self._verifyCompliance(path)
+
+
+        # TODO: Make this idempotent -- we shouldn't fire an alert multiple
+        # times, but Zookeeper/Kazoo have a tendency to fire off callbacks
+        # multiple times. Need to maintain state somewhere.
+        if compliant is not True:
+            # Get the alert-specific settings and state for this particular
+            # path and pass that
+            try:
+                params = self._paths[path]['alerter']
+            except KeyError:
+                params = None
+
+            message = '%s failed check: %s' % (path, compliant)
+            self._alerter.alert(message=message, params=params)
 
     def _verifyCompliance(self, path):
         """Verify whether a given path is currently within spec.
@@ -166,8 +181,9 @@ class Monitor(object):
             log.debug('Comparing %s min children (%s) to current count (%s).' %
                       (path, config['children'], count))
             if count < config['children']:
-                return ('Found children (%s) less than minimum (%s)' %
-                        (count, config['children']))
+                msg = ('Found children (%s) less than minimum (%s)' %
+                       (count, config['children']))
+                return msg
 
         # Done checking things..
         return compliant

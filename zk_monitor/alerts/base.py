@@ -66,7 +66,7 @@ class AlerterBase(object):
             'alerting': self._lock.status()
         }
 
-    def alert(self, message):
+    def alert(self, message, params=None):
         """Fires off an Alert.
 
         If this Alerter object currently owns the 'alert lock', then
@@ -82,4 +82,4 @@ class AlerterBase(object):
             return
 
         log.warning('Firing Alert: %s' % message)
-        self._alert(message)
+        self._alert(message, params=params)

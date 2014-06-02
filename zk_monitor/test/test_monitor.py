@@ -11,7 +11,7 @@ class TestMonitor(unittest.TestCase):
         self.mocked_cs = mock.MagicMock()
         self.mocked_alerter = mock.MagicMock()
         self.paths = {
-            '/foo': {'children': 1},
+            '/foo': {'children': 1, 'alerter': {'email': 'unit@test.com'}},
             '/bar': {'children': 2},
             '/baz': None}
         self.monitor = monitor.Monitor(
@@ -85,7 +85,23 @@ class TestMonitor(unittest.TestCase):
         self.mocked_ndsr.get = side_effect
         self.monitor._pathUpdateCallback({'path': '/bar'})
         self.mocked_alerter.alert.assert_called_with(
-            'Found children (1) less than minimum (2)')
+            message=('/bar failed check: Found children (1) '
+                    'less than minimum (2)'),
+            params=None)
+
+    def testPathUpdateCallbackWithAlerterParams(self):
+        def side_effect(path):
+            data = {
+                '/foo': {'data': None, 'stat': None,
+                         'children': []},
+            }
+            return data[path]
+        self.mocked_ndsr.get = side_effect
+        self.monitor._pathUpdateCallback({'path': '/foo'})
+        self.mocked_alerter.alert.assert_called_with(
+            message=('/foo failed check: Found children (0) '
+                    'less than minimum (1)'),
+            params={'email': 'unit@test.com'})
 
     def testVerifyCompliance(self):
         def side_effect(path):
