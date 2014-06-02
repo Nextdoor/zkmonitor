@@ -5,6 +5,13 @@ compliance with a given set of specifications (ie, minimum number of
 registered nodes). In the event that a path changes and becomes out of
 spec, (too few nodes, for example), an alert is fired off to let you know.
 
+## Clustered Design
+
+*zk_monitor* is designed to operate in clustered mode with multiple redundant
+agents running on multiple servers. The agents talk to eachother through
+Zookeeper using a common path and a series of locks/znodes. You can run as
+many agents as you want, but only one will ever handle sending off alerts.
+
 ## Configuration
 
 Most of the connection and *zk_monitor* specific settings are managed via
@@ -18,6 +25,14 @@ CLI arguments:
       -h, --help            show this help message and exit
       -z ZOOKEEPER, --zookeeper=ZOOKEEPER
                             Zookeeper Server (def: localhost:2181)
+      --zookeeper_user=ZOOKEEPER_USER
+                            Zookeeper ACL Username
+      --zookeeper_pass=ZOOKEEPER_PASS
+                            Zookeeper ACL Password
+      -c CLUSTER_NAME, --cluster_name=CLUSTER_NAME
+                            Unique cluster name (ie, prod-zookeeper-monitor)
+      --cluster_prefix=CLUSTER_PREFIX
+                            Prefix path in Zookeeper for all Zk-Monitor Clusters
       -f FILE, --file=FILE  Path to YAML file with znodes to monitor.
       -p PORT, --port=PORT  Port to listen to (def: 8080)
       -l LEVEL, --level=LEVEL
@@ -57,6 +72,9 @@ This page provides a simple live status of the app and its monitors.
     $ curl --silent  http://localhost:8080/status | python -m json.tool
     {
         "monitor": {
+            "alerter": {
+                "alerting": true
+            },
             "compliance": {
                 "/services/foo/min_0": true,
                 "/services/foo/min_1": "Found children (0) less than minimum (1)",
