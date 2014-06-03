@@ -133,7 +133,7 @@ class Monitor(object):
             data: The data returned by the Service Registry.
         """
         path = data['path']
-        log.info('Path change detected at %s' % path)
+        log.debug('Path change detected at %s' % path)
 
         compliant = self._verifyCompliance(path)
 
