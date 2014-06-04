@@ -4,4 +4,4 @@ tornadomail
 PyYAML
 
 # Nextdoor Service Registry
-nd_service_registry
+nd_service_registry>=0.3.0

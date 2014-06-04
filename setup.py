@@ -152,11 +152,11 @@ setup(
     tests_require=open('requirements.test.txt').readlines(),
     setup_requires=open('requirements.txt').readlines(),
     install_requires=open('requirements.txt').readlines(),
-#    entry_points={
-#        'console_scripts': [
-#            'ndsr = nd_service_registry.bin.ndsr.ndsr:console_entry_point'
-#        ],
-#    },
+    entry_points={
+        'console_scripts': [
+            'zk_monitor = zk_monitor.runserver:main'
+        ],
+    },
     classifiers=[
         'Development Status :: 4 - Beta',
         'Topic :: Software Development',
