@@ -39,4 +39,4 @@ class StatusHandler(web.RequestHandler):
             }
 
     def get(self):
-        self.write(json.dumps(self.state))
+        self.write(json.dumps(self.state, indent=4, sort_keys=True))
