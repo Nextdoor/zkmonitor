@@ -101,6 +101,20 @@ This page provides a simple live status of the app and its monitors.
 
 ## Development
 
+### Setup
+
+    # Create a dedicated Python virtual environment and source it
+    virtualenv --no-site-packages .venv
+    unset PYTHONPATH
+    source .venv/bin/activate
+
+    # Install the dependencies
+    make build
+
+    # Run the tests
+    make test
+
+
 ### Postfix on Mac OSX
 
 If you want to develop on a Mac OSX host, you need to enable email the
