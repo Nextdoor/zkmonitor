@@ -39,4 +39,5 @@ class StatusHandler(web.RequestHandler):
             }
 
     def get(self):
+        self.set_header('Content-Type', 'text/json; charset=UTF-8')
         self.write(json.dumps(self.state, indent=4, sort_keys=True))
