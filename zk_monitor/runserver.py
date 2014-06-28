@@ -13,7 +13,7 @@
 # Copyright 2014 Nextdoor.com, Inc
 
 """
-zk_monitor start script
+Main entry-point script for zk_mnonitor.
 """
 
 __author__ = 'Matt Wise (matt@nextdoor.com)'

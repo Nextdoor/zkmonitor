@@ -11,6 +11,13 @@
 # limitations under the License.
 #
 # Copyright 2014 Nextdoor.com, Inc
+"""
+Agent-to-Agent Cluster communication engine.
+
+This class manages all of the communication between zk_monitor agents
+(using Zookeeper as the communication system). Handles all direct writes
+from zk_monitor into Zookeeper in one common module.
+"""
 
 import logging
 import platform

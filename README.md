@@ -101,6 +101,39 @@ This page provides a simple live status of the app and its monitors.
 
 ## Development
 
+### Class/Object Architecture
+
+    runserver
+    |
+    +-- nd_service_registry.KazooServiceRegistry
+    |   Connection to Zookeeper 
+    |
+    +-- cluster.State
+    |   | Handles node-to-node communication via Zookeeper
+    |   |
+    |   +-- Registers /zk_monitor/agent/<agent name>
+    |
+    +-- monitor.Monitor
+    |   | Monitors all configured paths
+    |   |
+    |   +-- alerts.email.EmailAlerter
+    |       | Sends Email-Based Alerts Asynchronously
+    |       |
+    |       +-- tornadomail.backens.smtp.EmailBackend()
+    |
+    +-- tornado.Application
+    |   | Handles all web requests
+    |   |
+    |   +-- web.app.getApplication()
+    |       |
+    |       +-- root.RootHandler
+    |       |   URL: /
+    |       |
+    |       +-- state.StateHandler
+    |       |   URL: /state
+    |       |   Obj Ref -> nd_service_registry.KazooServiceRegistry
+    |       |   Obj Ref -> monitor.Monitor
+
 ### Setup
 
     # Create a dedicated Python virtual environment and source it

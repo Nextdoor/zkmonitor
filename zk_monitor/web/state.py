@@ -13,7 +13,10 @@
 # Copyright 2013 Nextdoor.com, Inc
 
 """
-Handles generating the root index page for web requests.
+Serves up a JSON status document.
+
+Includes the status for all of the monitored paths from the Monitor
+object as well as connection state information for Zookeeper.
 """
 
 __author__ = 'matt@nextdoor.com (Matt Wise)'

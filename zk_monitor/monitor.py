@@ -11,6 +11,14 @@
 # limitations under the License.
 #
 # Copyright 2014 Nextdoor.com, Inc
+"""
+Initiates monitoring Zookeeper paths for compliance.
+
+This modules focus is to initiate the monitoring of the paths in Zookeeper,
+and keep track of them for their current 'compliance state.' Upon any change
+to their state, compliance is validated and the appropriate alerts are fired
+off.
+"""
 
 import logging
 
