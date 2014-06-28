@@ -27,6 +27,11 @@ class StatusHandlerIntegrationTests(testing.AsyncHTTPTestCase):
         self.http_client.fetch(self.get_url('/'), self.stop)
         response = self.wait()
 
+        self.assertTrue('text/json' in response.headers['Content-Type'],
+                        'For easier access via standard browsers, the content '
+                        'type should be set to text/json so that the browsers '
+                        'render it cleanly.')
+
         # Load the expected JSON response into a dict
         body_to_dict = json.loads(response.body)
 
