@@ -106,7 +106,18 @@ This page provides a simple live status of the app and its monitors.
     runserver
     |
     +-- nd_service_registry.KazooServiceRegistry
-    |   Connection to Zookeeper 
+    |   | Connection to Zookeeper
+    |
+    +-- alert.Dispatcher
+    |   | Handles dispatching of all alerts to Alerter objects
+    |   |
+    |   +-- alerts.email.EmailAlerter
+    |   |   | Sends Email-Based Alerts Asynchronously
+    |   |   |
+    |   |   +-- tornadomail.backends.smtp.EmailBackend()
+    |   |
+    |   +-- alerts.rest.HipChatAlerter
+    |       | Sends Hipchat Alerts Asynchronously
     |
     +-- cluster.State
     |   | Handles node-to-node communication via Zookeeper
@@ -116,10 +127,11 @@ This page provides a simple live status of the app and its monitors.
     +-- monitor.Monitor
     |   | Monitors all configured paths
     |   |
-    |   +-- alerts.email.EmailAlerter
-    |       | Sends Email-Based Alerts Asynchronously
-    |       |
-    |       +-- tornadomail.backens.smtp.EmailBackend()
+    |   +-- Obj Ref -> alerts.Dispatcher
+    |       | Alerts are fired off to the Dispatcher, the Dispatcher
+    |       | handles determining whether or not the alert is a dup, a shift
+    |       | from in-compliance to out-of-compliance (or vice versa),
+    |       | and which Alerters to fire off (Hipchat, Email, etc).
     |
     +-- tornado.Application
     |   | Handles all web requests
