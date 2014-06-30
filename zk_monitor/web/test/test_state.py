@@ -4,6 +4,7 @@ from tornado import web
 from tornado import testing
 
 from zk_monitor.web import state
+from zk_monitor import version
 
 
 class StatusHandlerIntegrationTests(testing.AsyncHTTPTestCase):
@@ -38,4 +39,4 @@ class StatusHandlerIntegrationTests(testing.AsyncHTTPTestCase):
         # Ensure the right keys are in it
         self.assertEquals(True, body_to_dict['zookeeper']['connected'])
         self.assertEquals('test', body_to_dict['monitor'])
-        self.assertEquals('0.0.1', body_to_dict['version'])
+        self.assertEquals(version.__version__, body_to_dict['version'])

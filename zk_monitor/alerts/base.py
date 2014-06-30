@@ -50,6 +50,9 @@ class AlerterBase(object):
         args:
             path: Zookeeper path to find our lock in.
         """
+        # FIXME: Bug here -- multiple classes inheriting from this, but only 1
+        # will get this lock. Meaning that if we have Email and Hipchat - only
+        # one of the two will work
         log.debug('Attempting to acquire lock for sending alerts.')
         self._lock = self._cs.getLock('alerter')
         self._lock.acquire()

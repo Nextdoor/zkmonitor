@@ -1,12 +1,14 @@
 import mock
 
-from tornado.testing import unittest
+from tornado import testing
 
 from zk_monitor import monitor
 
 
-class TestMonitor(unittest.TestCase):
+class TestMonitor(testing.AsyncTestCase):
     def setUp(self):
+        super(TestMonitor, self).setUp()
+
         self.mocked_ndsr = mock.MagicMock()
         self.mocked_cs = mock.MagicMock()
         self.mocked_alerter = mock.MagicMock()
@@ -19,6 +21,8 @@ class TestMonitor(unittest.TestCase):
             self.mocked_cs,
             self.paths)
         self.monitor._alerter = self.mocked_alerter
+
+        self.monitor._dispatcher = mock.MagicMock()
 
     def testInit(self):
         self.mocked_ndsr.get_state.assert_called_with(
@@ -75,20 +79,22 @@ class TestMonitor(unittest.TestCase):
         ]
         self.mocked_ndsr.get.assert_has_calls(expected_calls)
 
+    @testing.gen_test
     def testPathUpdateCallback(self):
-        def side_effect(path):
+        # Will update value for a path to cancel the alert
+        def bar_one_child(path):
             data = {
                 '/bar': {'data': None, 'stat': None,
                          'children': ['child1:123']},
             }
             return data[path]
-        self.mocked_ndsr.get = side_effect
+        self.mocked_ndsr.get = bar_one_child
         self.monitor._pathUpdateCallback({'path': '/bar'})
-        self.mocked_alerter.alert.assert_called_with(
-            message=('/bar failed check: Found children (1) '
-                     'less than minimum (2)'),
-            params=None)
+        self.monitor._dispatcher.update.assert_called_with(
+            message='Found children (1) less than minimum (2)',
+            data={'path': '/bar'})
 
+    @testing.gen_test
     def testPathUpdateCallbackWithAlerterParams(self):
         def side_effect(path):
             data = {
@@ -98,10 +104,9 @@ class TestMonitor(unittest.TestCase):
             return data[path]
         self.mocked_ndsr.get = side_effect
         self.monitor._pathUpdateCallback({'path': '/foo'})
-        self.mocked_alerter.alert.assert_called_with(
-            message=('/foo failed check: Found children (0) '
-                     'less than minimum (1)'),
-            params={'email': 'unit@test.com'})
+        self.monitor._dispatcher.update.assert_called_with(
+            message=('Found children (0) less than minimum (1)'),
+            data={'path': '/foo'})
 
     def testVerifyCompliance(self):
         def side_effect(path):
@@ -115,9 +120,9 @@ class TestMonitor(unittest.TestCase):
             return data[path]
         self.mocked_ndsr.get = side_effect
 
-        self.assertEquals(True, self.monitor._verifyCompliance('/foo'))
-        self.assertNotEquals(True, self.monitor._verifyCompliance('/bar'))
-        self.assertEquals(True, self.monitor._verifyCompliance('/baz'))
+        self.assertEquals(False, self.monitor._verifyCompliance('/foo'))
+        self.assertNotEquals(False, self.monitor._verifyCompliance('/bar'))
+        self.assertEquals(False, self.monitor._verifyCompliance('/baz'))
 
     def testState(self):
         def side_effect(path):
@@ -133,7 +138,7 @@ class TestMonitor(unittest.TestCase):
         ret_val = self.monitor.state()
 
         self.assertTrue('compliance' in ret_val)
-        self.assertEquals(True, ret_val['compliance']['/foo'])
+        self.assertEquals(False, ret_val['compliance']['/foo'])
         self.assertEquals('Found children (1) less than minimum (2)',
                           ret_val['compliance']['/bar'])
-        self.assertEquals(True, ret_val['compliance']['/baz'])
+        self.assertEquals(False, ret_val['compliance']['/baz'])

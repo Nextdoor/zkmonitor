@@ -22,6 +22,7 @@ off.
 
 import logging
 
+from zk_monitor import alerts
 from zk_monitor.alerts import email
 
 log = logging.getLogger(__name__)
@@ -33,6 +34,7 @@ class InvalidConfigException(Exception):
 
 class Monitor(object):
     """Main object used for monitoring nodes in Zookeeper."""
+
     def __init__(self, ndsr, cs, paths):
         """Initialize the object and our watches.
 
@@ -48,10 +50,18 @@ class Monitor(object):
         self._cs = cs
         self._paths = paths
 
+        # Temporary duplicating these until the separation is in place
+        # self._config = paths
+
         # Create our Alerter object. All notifications of path compliance
         # being out of spec are sent off to an Alerter.
         # TODO(Fix this path)
         self._alerter = email.EmailAlerter(self._cs)
+
+        self._dispatcher = alerts.Dispatcher(
+            cluster_state=self._cs,
+            config=self._paths)
+        self._dispatcher.monitor = self  # Pass this object to dispatcher
 
         # Validate the supplied path configs
         self._validatePaths(paths)
@@ -61,6 +71,15 @@ class Monitor(object):
 
         # Generate watches on those paths
         self._watchPaths(paths.keys())
+
+    def get_config(self, path=None):
+        """Provide internal configuration."""
+        # This abstraction is in place to handle separation of config/paths
+        # or even combining multiple configs in one place?
+        if path:
+            return self._paths.get(path, {})
+
+        return self._paths
 
     def _stateListener(self, state):
         """Executed any time the connection state changes.
@@ -143,21 +162,11 @@ class Monitor(object):
         path = data['path']
         log.debug('Path change detected at %s' % path)
 
-        compliant = self._verifyCompliance(path)
+        message = self._verifyCompliance(path)
 
-        # TODO: Make this idempotent -- we shouldn't fire an alert multiple
-        # times, but Zookeeper/Kazoo have a tendency to fire off callbacks
-        # multiple times. Need to maintain state somewhere.
-        if compliant is not True:
-            # Get the alert-specific settings and state for this particular
-            # path and pass that
-            try:
-                params = self._paths[path]['alerter']
-            except KeyError:
-                params = None
-
-            message = '%s failed check: %s' % (path, compliant)
-            self._alerter.alert(message=message, params=params)
+        if self._should_dispatch_alert(data):
+            self._dispatcher.update(data=data,
+                                    message=message)
 
     def _verifyCompliance(self, path):
         """Verify whether a given path is currently within spec.
@@ -166,21 +175,19 @@ class Monitor(object):
             path: The path to validate (must exist in self._paths)
 
         returns:
-            True: Everything is happy
-
+            False: No failures are found / Nothing to report.
             or
-
-            A string describing the failure.
+            String: Message describing the failure.
         """
-        # Begin with compliance being True
-        compliant = True
+        # Begin with no errors
+        errors = False
 
         # Load up the requirements for this path
         config = self._paths[path]
 
         # If the config is empty, then there is no compliance testing.
         if not config:
-            return compliant
+            return errors
 
         # If there is a minimum 'children' amount, check that.
         if 'children' in config:
@@ -193,7 +200,12 @@ class Monitor(object):
                 return msg
 
         # Done checking things..
-        return compliant
+        return errors
+
+    def _should_dispatch_alert(self, data):
+        # this function would check for circumstances that shouldn't alert
+        # such as transition from Good to Good, or from Unknown to Good
+        return True
 
     def state(self):
         """Returns a dict with our current status."""
