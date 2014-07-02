@@ -102,3 +102,16 @@ class TestDispatcher(testing.AsyncTestCase):
         self.dispatcher.alerts['custom'].alert.assert_called_with(
             message='unittest',
             params=email_params)
+
+    def test_status(self):
+        """Dispatcher's status should report on all alerts that it uses."""
+
+        self.dispatcher = alerts.Dispatcher(self._cs, self.config)
+        self.dispatcher.alerts = {}
+        self.dispatcher.alerts['email'] = mock.MagicMock()
+        self.dispatcher.alerts['email'].status = mock.Mock(return_value='test')
+        self.dispatcher.alerts['other'] = mock.MagicMock()
+        self.dispatcher.alerts['other'].status = mock.Mock(return_value='test')
+
+        status = self.dispatcher.status()
+        self.assertEquals(['test', 'test'], status)

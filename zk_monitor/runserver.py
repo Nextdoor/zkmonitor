@@ -137,8 +137,11 @@ def main():
     # Kick off our main monitoring object
     mon = monitor.Monitor(sr, cs, paths)
 
+    # May instantiate this here instead of inside of Monitor
+    dis = monitor._dispacher
+
     # Build the HTTP service listening to the port supplied
-    server = app.getApplication(sr, mon)
+    server = app.getApplication(sr, mon, dis)
     server.listen(int(options.port))
     ioloop.IOLoop.instance().start()
 

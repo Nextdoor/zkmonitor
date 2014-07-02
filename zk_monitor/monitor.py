@@ -14,10 +14,9 @@
 """
 Initiates monitoring Zookeeper paths for compliance.
 
-This modules focus is to initiate the monitoring of the paths in Zookeeper,
-and keep track of them for their current 'compliance state.' Upon any change
-to their state, compliance is validated and the appropriate alerts are fired
-off.
+This modules focus is to initiate the monitoring of the paths in Zookeeper, and
+keep track of them for their current 'compliance state.' Upon any change to
+their state, compliance is validated and the appropriate alerts are dispatched.
 """
 
 import logging
@@ -61,7 +60,6 @@ class Monitor(object):
         self._dispatcher = alerts.Dispatcher(
             cluster_state=self._cs,
             config=self._paths)
-        self._dispatcher.monitor = self  # Pass this object to dispatcher
 
         # Validate the supplied path configs
         self._validatePaths(paths)
@@ -71,15 +69,6 @@ class Monitor(object):
 
         # Generate watches on those paths
         self._watchPaths(paths.keys())
-
-    def get_config(self, path=None):
-        """Provide internal configuration."""
-        # This abstraction is in place to handle separation of config/paths
-        # or even combining multiple configs in one place?
-        if path:
-            return self._paths.get(path, {})
-
-        return self._paths
 
     def _stateListener(self, state):
         """Executed any time the connection state changes.
@@ -150,11 +139,10 @@ class Monitor(object):
             self._ndsr.get(path, callback=self._pathUpdateCallback)
 
     def _pathUpdateCallback(self, data):
-        """Quick method executed when one of our watched paths
-        (defined below) is updated. This method receives updates
-        from the Service Registry when a path changes, calls out
-        to the _verifyCompliance() method, and if fires off an
-        alert if appropriate.
+        """Quick method executed when one of our watched paths (defined below)
+        is updated. This method receives updates from the Service Registry when
+        a path changes, calls out to the _verifyCompliance() method, and
+        updates the dispatcher with the new status and message.
 
         args:
             data: The data returned by the Service Registry.
@@ -211,9 +199,6 @@ class Monitor(object):
         """Returns a dict with our current status."""
         # Begin our status dict
         status = {}
-
-        # Get our Alerter status
-        status['alerter'] = self._alerter.status()
 
         # For every path we are watching, get the live compliance status
         status['compliance'] = {}

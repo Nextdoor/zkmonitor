@@ -34,12 +34,13 @@ class StatusHandler(web.RequestHandler):
     def initialize(self, settings):
         """Log the initialization of this root handler"""
         self.state = {
+            'version': VERSION,
             'zookeeper': {
                 'connected': settings['ndsr']._zk.connected,
-                },
+            },
             'monitor': settings['monitor'].state(),
-            'version': VERSION
-            }
+            'dispatcher': settings['dispatcher'].state(),
+        }
 
     def get(self):
         self.set_header('Content-Type', 'text/json; charset=UTF-8')

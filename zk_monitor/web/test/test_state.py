@@ -10,12 +10,17 @@ from zk_monitor import version
 class StatusHandlerIntegrationTests(testing.AsyncHTTPTestCase):
     def get_app(self):
         self.mocked_sr = mock.MagicMock()
+
         self.mocked_monitor = mock.MagicMock()
         self.mocked_monitor.state.return_value = 'test'
+
+        self.mocked_dispatcher = mock.MagicMock()
+        self.mocked_dispatcher.state.return_value = 'test'
 
         self.settings = {
             'ndsr': self.mocked_sr,
             'monitor': self.mocked_monitor,
+            'dispatcher': self.mocked_dispatcher,
         }
         URLS = [(r'/', state.StatusHandler,
                 dict(settings=self.settings))]
