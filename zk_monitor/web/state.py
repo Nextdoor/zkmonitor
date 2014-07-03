@@ -33,15 +33,15 @@ class StatusHandler(web.RequestHandler):
 
     def initialize(self, settings):
         """Log the initialization of this root handler"""
-        self.state = {
+        self.status = {
             'version': VERSION,
             'zookeeper': {
                 'connected': settings['ndsr']._zk.connected,
             },
-            'monitor': settings['monitor'].state(),
-            'dispatcher': settings['dispatcher'].state(),
+            'monitor': settings['monitor'].status(),
+            'dispatcher': settings['dispatcher'].status(),
         }
 
     def get(self):
         self.set_header('Content-Type', 'text/json; charset=UTF-8')
-        self.write(json.dumps(self.state, indent=4, sort_keys=True))
+        self.write(json.dumps(self.status, indent=4, sort_keys=True))

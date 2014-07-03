@@ -4,6 +4,10 @@ from tornado import testing
 
 from zk_monitor import monitor
 
+import logging
+
+log = logging.getLogger(__name__)
+
 
 class TestMonitor(testing.AsyncTestCase):
     def setUp(self):
@@ -11,7 +15,6 @@ class TestMonitor(testing.AsyncTestCase):
 
         self.mocked_ndsr = mock.MagicMock()
         self.mocked_cs = mock.MagicMock()
-        self.mocked_alerter = mock.MagicMock()
         self.paths = {
             '/foo': {'children': 1, 'alerter': {'email': 'unit@test.com'}},
             '/bar': {'children': 2},
@@ -20,7 +23,6 @@ class TestMonitor(testing.AsyncTestCase):
             self.mocked_ndsr,
             self.mocked_cs,
             self.paths)
-        self.monitor._alerter = self.mocked_alerter
 
         self.monitor._dispatcher = mock.MagicMock()
 
@@ -81,7 +83,6 @@ class TestMonitor(testing.AsyncTestCase):
 
     @testing.gen_test
     def testPathUpdateCallback(self):
-        # Will update value for a path to cancel the alert
         def bar_one_child(path):
             data = {
                 '/bar': {'data': None, 'stat': None,
@@ -91,8 +92,7 @@ class TestMonitor(testing.AsyncTestCase):
         self.mocked_ndsr.get = bar_one_child
         self.monitor._pathUpdateCallback({'path': '/bar'})
         self.monitor._dispatcher.update.assert_called_with(
-            message='Found children (1) less than minimum (2)',
-            data={'path': '/bar'})
+            state='Error', data={'path': '/bar'})
 
     @testing.gen_test
     def testPathUpdateCallbackWithAlerterParams(self):
@@ -105,8 +105,7 @@ class TestMonitor(testing.AsyncTestCase):
         self.mocked_ndsr.get = side_effect
         self.monitor._pathUpdateCallback({'path': '/foo'})
         self.monitor._dispatcher.update.assert_called_with(
-            message=('Found children (0) less than minimum (1)'),
-            data={'path': '/foo'})
+            state='Error', data={'path': '/foo'})
 
     def testVerifyCompliance(self):
         def side_effect(path):
@@ -120,9 +119,26 @@ class TestMonitor(testing.AsyncTestCase):
             return data[path]
         self.mocked_ndsr.get = side_effect
 
-        self.assertEquals(False, self.monitor._verifyCompliance('/foo'))
-        self.assertNotEquals(False, self.monitor._verifyCompliance('/bar'))
-        self.assertEquals(False, self.monitor._verifyCompliance('/baz'))
+        # /foo is fully compliant
+        self.assertEquals(
+            (True, 'OK'), self.monitor._get_compliance('/foo'))
+        # /bar should have 2 children, but has only 1
+        self.assertEquals(
+            (False, 'Error'), self.monitor._get_compliance('/bar'))
+        # /baz has no children count requirement in the config file.
+        self.assertEquals(
+            (True, 'Unknown'), self.monitor._get_compliance('/baz'))
+
+    def testDispatchConditions(self):
+        self.assertTrue(
+            self.monitor._should_update_dispatcher(
+                'Unknown', 'Error'))
+        self.assertFalse(
+            self.monitor._should_update_dispatcher(
+                'Unknown', 'OK'))
+        self.assertFalse(
+            self.monitor._should_update_dispatcher(
+                'OK', 'OK'))
 
     def testState(self):
         def side_effect(path):
@@ -135,10 +151,48 @@ class TestMonitor(testing.AsyncTestCase):
             }
             return data[path]
         self.mocked_ndsr.get = side_effect
-        ret_val = self.monitor.state()
+        ret_val = self.monitor.status()
 
         self.assertTrue('compliance' in ret_val)
-        self.assertEquals(False, ret_val['compliance']['/foo'])
-        self.assertEquals('Found children (1) less than minimum (2)',
-                          ret_val['compliance']['/bar'])
-        self.assertEquals(False, ret_val['compliance']['/baz'])
+        self.assertEquals('OK', ret_val['compliance']['/foo'])
+        self.assertEquals('Error', ret_val['compliance']['/bar'])
+        self.assertEquals('Unknown', ret_val['compliance']['/baz'])
+
+
+# Integration test
+class TestWithDispatcher(testing.AsyncTestCase):
+    def setUp(self):
+        super(TestWithDispatcher, self).setUp()
+
+        self.mocked_ndsr = mock.MagicMock()
+        self.mocked_cs = mock.MagicMock()
+        self.paths = {
+            '/foo': {'children': 1, 'alerter': {'email': 'unit@test.com'}},
+            '/bar': {'children': 2},
+            '/baz': None}
+        self.monitor = monitor.Monitor(
+            self.mocked_ndsr,
+            self.mocked_cs,
+            self.paths)
+
+        # We want to keep the dispatcher real, but not alert anything.
+        self.monitor._dispatcher.send_alerts = mock.MagicMock()
+
+    @testing.gen_test
+    def test_dispatched_alert(self):
+        """Test that monitor causes an actual alert when something is broken.
+
+        Unit tests cover that dispatcher is updated, here we test that the
+        integration between Monitor and an actual send_alert() function exists.
+        """
+        def one_child(path):
+            data = {
+                '/foo': {'data': None, 'stat': None,
+                         'children': []},
+            }
+            return data[path]
+        self.mocked_ndsr.get = one_child
+        yield self.monitor._pathUpdateCallback({'path': '/foo'})
+        (self.monitor._dispatcher
+                     .send_alerts
+                     .assert_called_with({'path': '/foo'}))

@@ -33,6 +33,7 @@ class Dispatcher(object):
 
     def __init__(self, cluster_state, config):
         """Set up local 'cache' of path meta data and available alerters."""
+        log.debug('Initiating Dispatcher.')
 
         self._live_data_status = {}
         self._config = config
@@ -42,7 +43,7 @@ class Dispatcher(object):
         self.alerts['email'] = email.EmailAlerter(cluster_state)
 
     @gen.coroutine
-    def update(self, data, message):
+    def update(self, data, state):
         """Update path meta data and maybe alert.
 
         Data gets updated via the helper _update() method, which returns
@@ -52,7 +53,9 @@ class Dispatcher(object):
         An action governs whether to send an alert or not.
         """
 
-        action = yield gen.Task(self._update, data, message)
+        # TODO: FIXME: this asyn call isn't actually helping the Monitor
+        # routine because we yield here to take an action
+        action = yield gen.Task(self._update, data, state)
 
         if action:
             self.send_alerts(data)
@@ -60,12 +63,16 @@ class Dispatcher(object):
         raise gen.Return()
 
     @gen.coroutine
-    def _update(self, data=None, message=None):
+    def _update(self, data=None, state=None):
         """Updates the state of datas and concludes whether to alert or not."""
 
-        if not message:
+        # Generate report message.
+        message = '%s is %s' % (data['path'], state)
+
+        # import monitor here? otherwise circular loop
+        if state == 'OK':
             # Cancel the alert and bail out of here.
-            self.set_status(data, next_action=None)
+            self.set_status(data, message=message, next_action=None)
             raise gen.Return(None)
 
         # Set the alert, and continue to check your timer

@@ -27,10 +27,10 @@ class TestDispatcher(testing.AsyncTestCase):
 
         # == First dispatch update with an error message - this one will wait
         # for 2 seconds.
-        update_task = self.dispatcher.update(data=data, message='Broken')
+        update_task = self.dispatcher.update(data=data, state='Error')
 
         # == Now simulate OK scenario which will cancel the alert.
-        self.dispatcher.update(data=data, message=False)
+        self.dispatcher.update(data=data, state='OK')
 
         # For the purpose of a unit test - wait for the first callback to
         # finish
@@ -50,10 +50,10 @@ class TestDispatcher(testing.AsyncTestCase):
 
         # == First dispatch update with an error message - this one will wait
         # for 2 seconds.
-        update_task = self.dispatcher.update(data=data, message='Broken')
+        update_task = self.dispatcher.update(data=data, state='Error')
 
         # == Now simulate OK scenario which will cancel the alert.
-        self.dispatcher.update(data=data, message=False)
+        self.dispatcher.update(data=data, state='OK')
 
         # For the purpose of a unit test - wait for the first callback to
         # finish
@@ -71,7 +71,7 @@ class TestDispatcher(testing.AsyncTestCase):
 
         # == First dispatch update with an error message - this one will wait
         # for 2 seconds.
-        update_task = self.dispatcher.update(data=data, message='Broken')
+        update_task = self.dispatcher.update(data=data, state='Error')
 
         # For the purpose of a unit test - wait for the first callback to
         # finish
