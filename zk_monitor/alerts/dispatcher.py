@@ -53,8 +53,6 @@ class Dispatcher(object):
         An action governs whether to send an alert or not.
         """
 
-        # TODO: FIXME: this asyn call isn't actually helping the Monitor
-        # routine because we yield here to take an action
         action = yield gen.Task(self._update, data, state)
 
         if action:
@@ -67,7 +65,7 @@ class Dispatcher(object):
         """Updates the state of datas and concludes whether to alert or not."""
 
         # Generate report message.
-        message = '%s is %s' % (data['path'], state)
+        message = '%s is in the %s state.' % (data['path'], state)
 
         # import monitor here? otherwise circular loop
         if state == 'OK':
@@ -106,11 +104,19 @@ class Dispatcher(object):
             alert_engine = self.alerts.get(alert_type, None)
 
             if not alert_engine:
-                log.error('Alert type %s specified but not available')
+                log.error('Alert type `%s` specified '
+                          'but not available' % alert_type)
                 continue
 
+            log.debug('Invoking alert type `%s`.' % alert_type)
+
+            # Making `body` optional. `message` is used as subject by the email
+            # engine.
+            body = config['alerter'].get('body', message)
+
             # NOTE: Assuming email engine here until we can generalize it.
-            email_params = {'body': config['alerter']['body'],
+
+            email_params = {'body': body,
                             'email': config['alerter']['email']}
             alert_engine.alert(message=message,
                                params=email_params)

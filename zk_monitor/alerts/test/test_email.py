@@ -22,12 +22,19 @@ class TestEmailAlerter(unittest.TestCase):
         }
         self.alerter._alert('Unit Test Message', params)
         mocked_alert.assert_called_with(
-            'Unit Test Message', 'Unit Test Body', 'unit@test.com',
-            backend_instance)
+            subject='Unit Test Message',
+            body='Unit Test Body',
+            email='unit@test.com',
+            conn=backend_instance)
 
     def testAlertWithBadParams(self):
         self.assertEquals(None, self.alerter.alert('unittest', params=None))
         self.assertEquals(None, self.alerter.alert('unittest', params={}))
+
+    def testSingleBackend(self):
+        once = self.alerter._mail_backend
+        twice = self.alerter._mail_backend
+        self.assertEqual(once, twice)
 
 
 class TestEmailAlert(unittest.TestCase):

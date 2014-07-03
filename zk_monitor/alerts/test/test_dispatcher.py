@@ -3,6 +3,10 @@ import mock
 
 from zk_monitor import alerts
 
+import logging
+
+log = logging.getLogger(__name__)
+
 
 class TestDispatcher(testing.AsyncTestCase):
     def setUp(self):
@@ -49,7 +53,7 @@ class TestDispatcher(testing.AsyncTestCase):
         data = {'path': '/bar'}
 
         # == First dispatch update with an error message - this one will wait
-        # for 2 seconds.
+        # for `cancel_timeout` seconds.
         update_task = self.dispatcher.update(data=data, state='Error')
 
         # == Now simulate OK scenario which will cancel the alert.
@@ -115,3 +119,37 @@ class TestDispatcher(testing.AsyncTestCase):
 
         status = self.dispatcher.status()
         self.assertEquals(['test', 'test'], status)
+
+
+class TestWithEmail(testing.AsyncTestCase):
+    def setUp(self):
+        super(TestWithEmail, self).setUp()
+
+        self.config = {'/foo': {'children': 1,
+                                'alerter': {'email': 'unit@test.com',
+                                            'body': 'Unit test body here.'}}}
+
+        self._cs = mock.MagicMock()
+        self.dispatcher = alerts.Dispatcher(self._cs, self.config)
+
+    @testing.gen_test
+    def test_dispatch_without_timeout(self):
+        """Test dispatcher->EmailAlerter.alert() chain."""
+
+        with mock.patch.object(alerts.email.EmailAlert,
+                               '__init__') as mocked_email_alert:
+
+            mocked_email_alert.return_value = None  # important for __init__
+
+            yield self.dispatcher.update(
+                data={'path': '/foo'},
+                state='Error')
+
+            # Assertion below does really care about the 'conn' variable, but
+            # it's required for assert_called_with to be exact.
+            mocked_email_alert.assert_called_with(
+                subject='/foo is in the Error state.',
+                body='Unit test body here.',
+                email='unit@test.com',
+                conn=self.dispatcher.alerts['email']._mail_backend
+            )
