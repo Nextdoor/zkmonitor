@@ -158,9 +158,9 @@ class TestMonitor(testing.AsyncTestCase):
         ret_val = self.monitor.status()
 
         self.assertTrue('compliance' in ret_val)
-        self.assertEquals('OK', ret_val['compliance']['/foo'])
-        self.assertEquals('Error', ret_val['compliance']['/bar'])
-        self.assertEquals('Unknown', ret_val['compliance']['/baz'])
+        self.assertEquals('OK', ret_val['compliance']['/foo']['state'])
+        self.assertEquals('Error', ret_val['compliance']['/bar']['state'])
+        self.assertEquals('Unknown', ret_val['compliance']['/baz']['state'])
 
 
 # Integration test

@@ -21,13 +21,9 @@ their state, compliance is validated and the appropriate alerts are dispatched.
 
 import logging
 
-log = logging.getLogger(__name__)
+from zk_monitor.monitor import states
 
-STATE = {
-    'UNKNOWN': 'Unknown',
-    'ERROR': 'Error',
-    'OK': 'OK',
-}
+log = logging.getLogger(__name__)
 
 
 class InvalidConfigException(Exception):
@@ -173,7 +169,7 @@ class Monitor(object):
             string: reason for the state above.
         """
         # Begin with no errors
-        state = STATE['UNKNOWN']
+        state = states.UNKNOWN
         reason = 'No information is available about this path.'
 
         # Load up the requirements for this path
@@ -187,12 +183,12 @@ class Monitor(object):
             log.debug('Comparing %s min children (%s) to current count (%s).' %
                       (path, config['children'], count))
             if count < config['children']:
-                state = STATE['ERROR']
+                state = states.ERROR
                 reason = ('%s children is less than minimum %s' %
                           (count, config['children']))
                 log.debug(reason)
             else:
-                state = STATE['OK']
+                state = states.OK
                 reason = 'All checks pass.'
 
         # Done checking things..
@@ -202,8 +198,8 @@ class Monitor(object):
         # Most conditions should update the dispatcher except a couple
 
         silent_conditions = [
-            (STATE['UNKNOWN'], STATE['OK']),
-            (STATE['OK'], STATE['OK']),
+            (states.UNKNOWN, states.OK),
+            (states.OK, states.OK),
         ]
 
         if (old_state, new_state) in silent_conditions:
@@ -220,7 +216,7 @@ class Monitor(object):
         if new_state:
             self._paths[path]['state'] = new_state
 
-        return self._paths[path].get('state', STATE['UNKNOWN'])
+        return self._paths[path].get('state', states.UNKNOWN)
 
     def status(self):
         """Returns a dict with our current status."""
@@ -231,7 +227,10 @@ class Monitor(object):
         status['compliance'] = {}
 
         for path in self._paths:
-            status['compliance'][path] = self._get_compliance(path)[0]
+            state, reason = self._get_compliance(path)
+            status['compliance'][path] = {}
+            status['compliance'][path]['state'] = state
+            status['compliance'][path]['message'] = reason
 
         # Return the whole thing
         return status

@@ -30,12 +30,10 @@ class StatusHandlerIntegrationTests(testing.AsyncHTTPTestCase):
             self.mocked_cs,
             self.paths)
 
-        self.dispatcher = self.monitor._dispatcher
-
         self.settings = {
             'ndsr': self.mocked_ndsr,
             'monitor': self.monitor,
-            'dispatcher': self.dispatcher,
+            'dispatcher': self.mocked_disp,
         }
         URLS = [(r'/', state.StatusHandler,
                 dict(settings=self.settings))]
@@ -64,9 +62,11 @@ class StatusHandlerIntegrationTests(testing.AsyncHTTPTestCase):
 
         # Check that compliance is unknown for all paths since we never
         # invoked any updating.
-        self.assertEquals({
-            'compliance': {
-                '/foo': 'Unknown',
-                '/bar': 'Unknown'}}, body_to_dict['monitor'])
+        self.assertEquals(
+            body_to_dict['monitor']['compliance']['/foo']['state'],
+            'Unknown')
+        self.assertEquals(
+            body_to_dict['monitor']['compliance']['/bar']['state'],
+            'Unknown')
 
         self.assertEquals('disp_test', body_to_dict['dispatcher'])

@@ -19,14 +19,11 @@ from tornado import gen
 from tornado.ioloop import IOLoop
 
 from zk_monitor.alerts import email
+from zk_monitor.alerts import actions
+from zk_monitor.monitor import states
+
 
 log = logging.getLogger(__name__)
-
-ACTION = {
-    'NONE': 'No action on this path.',
-    'ALERT': 'Alert is pending.',
-    'SENT': 'Alert has been sent.',
-}
 
 
 class Dispatcher(object):
@@ -73,28 +70,26 @@ class Dispatcher(object):
     def update(self, path, state, reason):
         """Update path meta data and maybe alert.
 
-        Data gets updated via the helper _update() method, which returns
-        an appropriate action asyncronously. Read _update doc for cancellation
-        process details.
-
-        An action governs whether to send an alert or not.
+        This method should be thought of in 3 steps:
+            1) Create a pending alert status
+            2) Wait to see if it gets cancelled
+            3) Check the status and alert.
         """
-        # FIXME: Monitor imports Dispatcher
-        from zk_monitor.monitor import STATE
-
         # import monitor here? otherwise circular loop
-        if state == STATE['OK']:
+        if state == states.OK:
             # Cancel the alert and bail out of here.
-            self._path_status(path, message=reason, next_action=ACTION['NONE'])
+            self._path_status(path, message=reason, next_action=actions.NONE)
             raise gen.Return()
 
         # Set the alert, and continue to check your timer
-        self._path_status(path, message=reason, next_action=ACTION['ALERT'])
+        self._path_status(path, message=reason, next_action=actions.ALERT)
 
         # Check if we should timeout
         config = self._config[path]
         # TODO: Should be able to set a 'default' timeout for all paths where a
         # specifric cancel_timeout is not set.
+        # TODO: refactor to self.get_config(path, value)
+        # to check for default value, then grab path-specific value
         sleep_seconds = config.get('cancel_timeout', 0)
 
         yield self.sleep(sleep_seconds)
@@ -105,7 +100,7 @@ class Dispatcher(object):
         action = status['next_action']
 
         log.debug('Action required by %s: "%s"' % (state, action))
-        if action == ACTION['ALERT']:
+        if action == actions.ALERT:
             self.send_alerts(path)
 
         raise gen.Return()
@@ -162,7 +157,7 @@ class Dispatcher(object):
         Args:
             path: Some zk registered path /foo
             message: Human readable message/reason for an action.
-            next_action: ACTION value
+            next_action: alerts.actions value
         """
 
         if path not in self._live_path_status:
@@ -185,10 +180,10 @@ class Dispatcher(object):
         This is invoked by the web server for /status page.
         """
 
-        alert_list = self.alerts.keys()
+        alerter_list = self.alerts.keys()
         lock = self._lock.status()
 
         return {
-            'Registered Alerts': alert_list,
-            'Alerting Status': lock,
+            'alerters': alerter_list,
+            'alerting': lock,
         }

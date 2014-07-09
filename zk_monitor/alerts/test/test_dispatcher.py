@@ -139,8 +139,8 @@ class TestDispatcher(testing.AsyncTestCase):
         dispatcher1 = dispatcher.Dispatcher(self._cs, self.config)
         dispatcher2 = dispatcher.Dispatcher(self._cs, self.config)
 
-        self.assertTrue(dispatcher1.status()['Alerting Status'])
-        self.assertFalse(dispatcher2.status()['Alerting Status'])
+        self.assertTrue(dispatcher1.status()['alerting'])
+        self.assertFalse(dispatcher2.status()['alerting'])
 
     def test_status(self):
         """Dispatcher's status should report on all alerts that it uses."""
@@ -153,8 +153,8 @@ class TestDispatcher(testing.AsyncTestCase):
         self.dispatcher.alerts['other'].status = mock.Mock(return_value='test')
 
         status = self.dispatcher.status()
-        self.assertEquals(status['Registered Alerts'], ['other', 'email'])
-        self.assertTrue('Alerting Status' in status)
+        self.assertEquals(status['alerters'], ['other', 'email'])
+        self.assertTrue('alerting' in status)
 
 
 class TestWithEmail(testing.AsyncTestCase):
