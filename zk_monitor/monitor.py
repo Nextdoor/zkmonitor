@@ -21,8 +21,6 @@ their state, compliance is validated and the appropriate alerts are dispatched.
 
 import logging
 
-from zk_monitor import alerts
-
 log = logging.getLogger(__name__)
 
 STATE = {
@@ -39,7 +37,7 @@ class InvalidConfigException(Exception):
 class Monitor(object):
     """Main object used for monitoring nodes in Zookeeper."""
 
-    def __init__(self, ndsr, cs, paths):
+    def __init__(self, dispatcher, ndsr, cs, paths):
         """Initialize the object and our watches.
 
         args:
@@ -50,13 +48,10 @@ class Monitor(object):
                          '/bar': { 'children': 2 } }
         """
         log.debug('Initializing Monitor with Service Registry %s' % ndsr)
+        self._dispatcher = dispatcher
         self._ndsr = ndsr
         self._cs = cs
         self._paths = paths
-
-        self._dispatcher = alerts.Dispatcher(
-            cluster_state=self._cs,
-            config=self._paths)
 
         # Validate the supplied path configs
         self._validatePaths(paths)
@@ -147,8 +142,12 @@ class Monitor(object):
         """
         path = data['path']
 
-        compliance, new_state = self._get_compliance(path)
+        new_state, reason = self._get_compliance(path)
 
+        # NOTE: temporarily grab the old state, then update local knowledge to
+        # the new state. We need both (old and new) states to make a decision
+        # later, but the old one is stored in this object, and the new one is
+        # available only when coming into this method.
         old_state = self._path_state(path)
         self._path_state(path, new_state)
 
@@ -161,7 +160,7 @@ class Monitor(object):
             # then it needs to be able to wait for it.
             # *Must* return this reference.
             return self._dispatcher.update(
-                data=data, state=new_state)
+                path=path, state=new_state, reason=reason)
 
     def _get_compliance(self, path):
         """Check if a given path is currently within spec.
@@ -170,32 +169,34 @@ class Monitor(object):
             path: The path to validate (must exist in self._paths)
 
         returns: tuple
-            Boolean: compliant? True means everything is OK.
             monitor.states: Message describing current status.
+            string: reason for the state above.
         """
         # Begin with no errors
-        compliant = True
         state = STATE['UNKNOWN']
+        reason = 'No information is available about this path.'
 
         # Load up the requirements for this path
         config = self._paths[path]
 
         # If there is a minimum 'children' amount, check that.
         if config and 'children' in config:
+            # TODO: Pass in all needed data to _get_compliance() so it doesn't
+            # make direct SR calls.
             count = len(self._ndsr.get(path)['children'])
             log.debug('Comparing %s min children (%s) to current count (%s).' %
                       (path, config['children'], count))
             if count < config['children']:
-                log.debug('Found children (%s) less than minimum (%s)' %
-                          (count, config['children']))
-                compliant = False
                 state = STATE['ERROR']
+                reason = ('%s children is less than minimum %s' %
+                          (count, config['children']))
+                log.debug(reason)
             else:
-                compliant = True
                 state = STATE['OK']
+                reason = 'All checks pass.'
 
         # Done checking things..
-        return compliant, state
+        return state, reason
 
     def _should_update_dispatcher(self, old_state, new_state):
         # Most conditions should update the dispatcher except a couple
@@ -230,7 +231,7 @@ class Monitor(object):
         status['compliance'] = {}
 
         for path in self._paths:
-            status['compliance'][path] = self._get_compliance(path)[1]
+            status['compliance'][path] = self._get_compliance(path)[0]
 
         # Return the whole thing
         return status

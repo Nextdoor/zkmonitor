@@ -11,9 +11,3 @@
 # limitations under the License.
 #
 # Copyright 2014 Nextdoor.com, Inc
-
-# For importing convenience
-from zk_monitor.alerts.dispatcher import Dispatcher
-
-# Keeping pyflakes happy
-Dispatcher

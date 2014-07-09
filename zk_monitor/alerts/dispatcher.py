@@ -22,28 +22,55 @@ from zk_monitor.alerts import email
 
 log = logging.getLogger(__name__)
 
+ACTION = {
+    'NONE': 'No action on this path.',
+    'ALERT': 'Alert is pending.',
+    'SENT': 'Alert has been sent.',
+}
+
 
 class Dispatcher(object):
     """Handles timing/cancelling/dispatching/dedup of all alerts to Alerter."""
 
-    # This dictionary is shared by multiple coroutines.
-    _live_data_status = {}
-
-    alerts = {}
-
     def __init__(self, cluster_state, config):
-        """Set up local 'cache' of path meta data and available alerters."""
+        """Set up local 'cache' of path meta data and available alerters.
+
+        We only allow a single Dispatcher to alert in a given cluster of
+        zkmonitor servers. We do this by acquiring a lock on a unique Zookeeper
+        path for this cluster of zkmonitor machines.
+
+        This prevents multiple alerts from being fired when a state change
+        occurs, as only one Dispatcher object in the cluster of machines is
+        active at ay time.
+
+        Args:
+            cluster_state: an instance of cluster.State
+            config: dictionary containing paths and configuration such as
+                {'/foo': {'children': 1,
+                          'alerter': {'email': 'unit@test.com',
+                                      'body': 'Unit test body here.'}}}
+
+        """
         log.debug('Initiating Dispatcher.')
 
-        self._live_data_status = {}
+        self._live_path_status = {}
         self._config = config
         self._cluster_state = cluster_state
 
         self.alerts = {}
-        self.alerts['email'] = email.EmailAlerter(cluster_state)
+        self.alerts['email'] = email.EmailAlerter()
+
+        self._begin_lock()
+
+    def _begin_lock(self):
+        """Begin monitoring the lock status path."""
+
+        log.debug('Attempting to acquire lock for sending alerts.')
+        self._lock = self._cluster_state.getLock('alerter')
+        self._lock.acquire()
 
     @gen.coroutine
-    def update(self, data, state):
+    def update(self, path, state, reason):
         """Update path meta data and maybe alert.
 
         Data gets updated via the helper _update() method, which returns
@@ -52,52 +79,60 @@ class Dispatcher(object):
 
         An action governs whether to send an alert or not.
         """
+        # FIXME: Monitor imports Dispatcher
+        from zk_monitor.monitor import STATE
 
-        action = yield gen.Task(self._update, data, state)
+        # import monitor here? otherwise circular loop
+        if state == STATE['OK']:
+            # Cancel the alert and bail out of here.
+            self._path_status(path, message=reason, next_action=ACTION['NONE'])
+            raise gen.Return()
 
-        if action:
-            self.send_alerts(data)
+        # Set the alert, and continue to check your timer
+        self._path_status(path, message=reason, next_action=ACTION['ALERT'])
+
+        # Check if we should timeout
+        config = self._config[path]
+        # TODO: Should be able to set a 'default' timeout for all paths where a
+        # specifric cancel_timeout is not set.
+        sleep_seconds = config.get('cancel_timeout', 0)
+
+        yield self.sleep(sleep_seconds)
+
+        # Re-fetch the status here -- it's important
+        status = self._path_status(path)
+
+        action = status['next_action']
+
+        log.debug('Action required by %s: "%s"' % (state, action))
+        if action == ACTION['ALERT']:
+            self.send_alerts(path)
 
         raise gen.Return()
 
     @gen.coroutine
-    def _update(self, data=None, state=None):
-        """Updates the state of datas and concludes whether to alert or not."""
+    def sleep(self, seconds):
+        """Do nothing for `seconds`, then continue the IO loop.
 
-        # Generate report message.
-        message = '%s is in the %s state.' % (data['path'], state)
+        If `seconds` is 0 or evaluates to 0 then this method exits immediately.
+        """
 
-        # import monitor here? otherwise circular loop
-        if state == 'OK':
-            # Cancel the alert and bail out of here.
-            self.set_status(data, message=message, next_action=None)
-            raise gen.Return(None)
-
-        # Set the alert, and continue to check your timer
-        self.set_status(data, message=message, next_action='alert')
-
-        # Check if we should timeout
-        config = self._config[data['path']]
-        cancel_timeout = config.get('cancel_timeout', 0)
         try:
-            cancel_timeout = float(cancel_timeout)
+            sleep_seconds = float(seconds)
         except (TypeError, ValueError):
-            cancel_timeout = 0
+            sleep_seconds = 0
 
-        if cancel_timeout > 0:
-            # Async version of "sleep"
+        if sleep_seconds > 0:
+            # add_timeout is a tornado "engine" function with a callback so it
+            # has to be called as a gen.Task
             yield gen.Task(IOLoop.current().add_timeout,
-                           time.time() + cancel_timeout)
+                           time.time() + sleep_seconds)
 
-        # Re-fetch the status here -- it's important
-        status = self.get_status(data)
+        raise gen.Return()
 
-        raise gen.Return(status['next_action'])
-
-    def send_alerts(self, data):
+    def send_alerts(self, path):
         """Send alert regarding this data."""
-        path = data['path']
-        message = self.get_status(data)['message']
+        message = self._path_status(path)['message']
 
         config = self._config[path]
         for alert_type, params in config['alerter'].items():
@@ -121,25 +156,28 @@ class Dispatcher(object):
             alert_engine.alert(message=message,
                                params=email_params)
 
-    def set_status(self, data, **kwargs):
-        """Create or update meta data for specific data path."""
+    def _path_status(self, path, message=None, next_action=None):
+        """Get or create meta data for specific data path.
 
-        self._live_data_status[data['path']] = self.get_status(data)
+        Args:
+            path: Some zk registered path /foo
+            message: Human readable message/reason for an action.
+            next_action: ACTION value
+        """
 
-        path = self._live_data_status[data['path']]
-        if 'message' in kwargs:
-            path['message'] = kwargs['message']
+        if path not in self._live_path_status:
+            self._live_path_status[path] = {
+                'message': False,
+                'next_action': None}
 
-        if 'next_action' in kwargs:
-            path['next_action'] = kwargs['next_action']
+        path_data = self._live_path_status[path]
+        if message:
+            path_data['message'] = message
 
-    def get_status(self, data):
-        """Fetch meta data for a specific data path, or return a template."""
+        if next_action:
+            path_data['next_action'] = next_action
 
-        default = {
-            'message': False,
-            'next_action': None}
-        return self._live_data_status.get(data['path'], default)
+        return path_data
 
     def status(self):
         """Return status of the dispatcher and alerts.
@@ -147,4 +185,10 @@ class Dispatcher(object):
         This is invoked by the web server for /status page.
         """
 
-        return [alert.status() for name, alert in self.alerts.items()]
+        alert_list = self.alerts.keys()
+        lock = self._lock.status()
+
+        return {
+            'Registered Alerts': alert_list,
+            'Alerting Status': lock,
+        }

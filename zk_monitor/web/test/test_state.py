@@ -10,9 +10,12 @@ from zk_monitor import monitor
 
 class StatusHandlerIntegrationTests(testing.AsyncHTTPTestCase):
     def get_app(self):
-        self.mocked_ndsr = mock.MagicMock(name='ND Serv. Reg')
 
+        self.mocked_disp = mock.MagicMock(name='Dispatcher')
+        self.mocked_ndsr = mock.MagicMock(name='ND Serv. Reg')
         self.mocked_cs = mock.MagicMock(name='Cluster State')
+
+        self.mocked_disp.status = mock.Mock(return_value='disp_test')
         self.mocked_cs.getLock.return_value = mock.MagicMock(name='CS_getLock')
         self.mocked_cs.getLock.return_value.status = mock.MagicMock(
             return_value='cs_getlock_test')
@@ -22,6 +25,7 @@ class StatusHandlerIntegrationTests(testing.AsyncHTTPTestCase):
             '/bar': 'config'}
 
         self.monitor = monitor.Monitor(
+            self.mocked_disp,
             self.mocked_ndsr,
             self.mocked_cs,
             self.paths)
@@ -64,3 +68,5 @@ class StatusHandlerIntegrationTests(testing.AsyncHTTPTestCase):
             'compliance': {
                 '/foo': 'Unknown',
                 '/bar': 'Unknown'}}, body_to_dict['monitor'])
+
+        self.assertEquals('disp_test', body_to_dict['dispatcher'])

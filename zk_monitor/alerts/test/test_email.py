@@ -10,7 +10,7 @@ class TestEmailAlerter(unittest.TestCase):
         self.mocked_cs = mock.MagicMock()
         self.mocked_lock = mock.MagicMock()
         self.mocked_cs.getLock.return_value = self.mocked_lock
-        self.alerter = email.EmailAlerter(self.mocked_cs)
+        self.alerter = email.EmailAlerter()
 
     @mock.patch('tornadomail.backends.smtp.EmailBackend')
     @mock.patch('zk_monitor.alerts.email.EmailAlert')

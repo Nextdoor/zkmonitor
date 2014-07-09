@@ -1,9 +1,14 @@
-from tornado import testing
-import mock
-
-from zk_monitor import alerts
-
 import logging
+import mock
+import time
+
+from tornado import gen
+from tornado import testing
+from tornado.ioloop import IOLoop
+
+from zk_monitor.alerts import dispatcher
+from zk_monitor.alerts import email
+
 
 log = logging.getLogger(__name__)
 
@@ -18,46 +23,62 @@ class TestDispatcher(testing.AsyncTestCase):
                                             'body': 'unit test body',
                                             'custom': 'something custom'}}}
 
-        self._cs = mock.MagicMock()
+        self._cs = mock.MagicMock(name='cluster.State')
+
+    @gen.coroutine
+    def sleep(self, seconds):
+        # add_timeout is an "engine" function, so it has to be called as a Task
+        yield gen.Task(IOLoop.current().add_timeout, time.time() + seconds)
 
     @testing.gen_test
     def test_dispatch_without_timeout(self):
+        path = '/bar'
         config_no_timeout = self.config
-        config_no_timeout['/bar']['cancel_timeout'] = None
 
-        self.dispatcher = alerts.Dispatcher(self._cs, config_no_timeout)
+        # This is the big difference between this text and the one with
+        # cancellation.
+        config_no_timeout[path]['cancel_timeout'] = None
+
+        self.dispatcher = dispatcher.Dispatcher(self._cs, config_no_timeout)
         self.dispatcher.send_alerts = mock.MagicMock()
-        data = {'path': '/bar'}
 
-        # == First dispatch update with an error message - this one will wait
-        # for 2 seconds.
-        update_task = self.dispatcher.update(data=data, state='Error')
+        # == First dispatch update with an error message
+        update_task = self.dispatcher.update(
+            path=path, state='Error', reason='Test')
+
+        # Faking a pause between updates, otherwise this test executes too
+        # quickly and the test may be invalid.
+        yield self.sleep(seconds=0.01)
 
         # == Now simulate OK scenario which will cancel the alert.
-        self.dispatcher.update(data=data, state='OK')
+        self.dispatcher.update(path=path, state='OK', reason='Test')
 
         # For the purpose of a unit test - wait for the first callback to
         # finish
         yield update_task
 
-        # Make sure we did NOT fire an alert.
+        # Make sure we fired off an alert.
         self.assertTrue(self.dispatcher.send_alerts.called, (
-            "Alert should have been fired off before being canceled.\nThis"
-            "test relies on the fact that two consequent coroutines\nexecute"
-            "consequently."))
+            "Alert should have been fired off before being canceled."))
 
     @testing.gen_test
     def test_dispatch_with_cancellation(self):
-        self.dispatcher = alerts.Dispatcher(self._cs, self.config)
+        path = '/bar'
+        self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
         self.dispatcher.send_alerts = mock.MagicMock()
-        data = {'path': '/bar'}
 
         # == First dispatch update with an error message - this one will wait
         # for `cancel_timeout` seconds.
-        update_task = self.dispatcher.update(data=data, state='Error')
+        update_task = self.dispatcher.update(
+            path=path, state='Error', reason='Test')
+
+        # Faking a pause between updates, otherwise this test executes too
+        # quickly and the test may be invalid. This time has to be smaller than
+        # the cancel_timeout above
+        yield self.sleep(seconds=0.01)
 
         # == Now simulate OK scenario which will cancel the alert.
-        self.dispatcher.update(data=data, state='OK')
+        self.dispatcher.update(path=path, state='OK', reason='Test')
 
         # For the purpose of a unit test - wait for the first callback to
         # finish
@@ -69,31 +90,32 @@ class TestDispatcher(testing.AsyncTestCase):
 
     @testing.gen_test
     def test_dispatch_with_alert(self):
-        self.dispatcher = alerts.Dispatcher(self._cs, self.config)
+        path = '/bar'
+        self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
         self.dispatcher.send_alerts = mock.MagicMock()
-        data = {'path': '/bar'}
 
         # == First dispatch update with an error message - this one will wait
         # for 2 seconds.
-        update_task = self.dispatcher.update(data=data, state='Error')
+        update_task = self.dispatcher.update(
+            path=path, state='Error', reason='Test')
 
         # For the purpose of a unit test - wait for the first callback to
         # finish
         yield update_task
 
-        self.dispatcher.send_alerts.assert_called_with(data)
+        self.dispatcher.send_alerts.assert_called_with(path)
 
     def test_send_alerts(self):
         # Prepare for testing.
         # '/bar' is configued to use 'email' in self.config
-        data = {'path': '/bar'}
-        self.dispatcher = alerts.Dispatcher(self._cs, self.config)
+        path = '/bar'
+        self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
         self.dispatcher.alerts['email'] = mock.MagicMock()
         self.dispatcher.alerts['custom'] = mock.MagicMock()
 
         # Set data, and send the alert
-        self.dispatcher.set_status(data, message='unittest')
-        self.dispatcher.send_alerts(data)
+        self.dispatcher._path_status(path, message='unittest')
+        self.dispatcher.send_alerts(path)
 
         # Dispatcher should loop through everything that is under "alerter"
         # setting.  alert call is hardcoded to assume email only for now.
@@ -107,10 +129,23 @@ class TestDispatcher(testing.AsyncTestCase):
             message='unittest',
             params=email_params)
 
+    def test_lock(self):
+        """Only one dispatcher should fire off alerts."""
+
+        lock = mock.MagicMock()
+        lock.status.side_effect = [True, False]
+        self._cs.getLock.return_value = lock
+
+        dispatcher1 = dispatcher.Dispatcher(self._cs, self.config)
+        dispatcher2 = dispatcher.Dispatcher(self._cs, self.config)
+
+        self.assertTrue(dispatcher1.status()['Alerting Status'])
+        self.assertFalse(dispatcher2.status()['Alerting Status'])
+
     def test_status(self):
         """Dispatcher's status should report on all alerts that it uses."""
 
-        self.dispatcher = alerts.Dispatcher(self._cs, self.config)
+        self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
         self.dispatcher.alerts = {}
         self.dispatcher.alerts['email'] = mock.MagicMock()
         self.dispatcher.alerts['email'].status = mock.Mock(return_value='test')
@@ -118,7 +153,8 @@ class TestDispatcher(testing.AsyncTestCase):
         self.dispatcher.alerts['other'].status = mock.Mock(return_value='test')
 
         status = self.dispatcher.status()
-        self.assertEquals(['test', 'test'], status)
+        self.assertEquals(status['Registered Alerts'], ['other', 'email'])
+        self.assertTrue('Alerting Status' in status)
 
 
 class TestWithEmail(testing.AsyncTestCase):
@@ -130,25 +166,24 @@ class TestWithEmail(testing.AsyncTestCase):
                                             'body': 'Unit test body here.'}}}
 
         self._cs = mock.MagicMock()
-        self.dispatcher = alerts.Dispatcher(self._cs, self.config)
+        self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
 
     @testing.gen_test
     def test_dispatch_without_timeout(self):
         """Test dispatcher->EmailAlerter.alert() chain."""
 
-        with mock.patch.object(alerts.email.EmailAlert,
+        with mock.patch.object(email.EmailAlert,
                                '__init__') as mocked_email_alert:
 
             mocked_email_alert.return_value = None  # important for __init__
 
             yield self.dispatcher.update(
-                data={'path': '/foo'},
-                state='Error')
+                path='/foo', state='Error', reason='Test')
 
             # Assertion below does really care about the 'conn' variable, but
             # it's required for assert_called_with to be exact.
             mocked_email_alert.assert_called_with(
-                subject='/foo is in the Error state.',
+                subject='Test',
                 body='Unit test body here.',
                 email='unit@test.com',
                 conn=self.dispatcher.alerts['email']._mail_backend
