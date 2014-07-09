@@ -152,6 +152,9 @@ setup(
     tests_require=open('requirements.test.txt').readlines(),
     setup_requires=open('requirements.txt').readlines(),
     install_requires=open('requirements.txt').readlines(),
+    dependency_links = [
+      'git+git://github.com/equeny/tornadomail.git@e413b81450bf94b4db3cad1815affb8b2dce6b41#egg=tornadomail-master'
+    ],
     entry_points={
         'console_scripts': [
             'zk_monitor = zk_monitor.runserver:main'
