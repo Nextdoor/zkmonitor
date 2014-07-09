@@ -14,15 +14,14 @@
 """
 Initiates monitoring Zookeeper paths for compliance.
 
-This modules focus is to initiate the monitoring of the paths in Zookeeper,
-and keep track of them for their current 'compliance state.' Upon any change
-to their state, compliance is validated and the appropriate alerts are fired
-off.
+This modules focus is to initiate the monitoring of the paths in Zookeeper, and
+keep track of them for their current 'compliance state.' Upon any change to
+their state, compliance is validated and the appropriate alerts are dispatched.
 """
 
 import logging
 
-from zk_monitor.alerts import email
+from zk_monitor.monitor import states
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +32,8 @@ class InvalidConfigException(Exception):
 
 class Monitor(object):
     """Main object used for monitoring nodes in Zookeeper."""
-    def __init__(self, ndsr, cs, paths):
+
+    def __init__(self, dispatcher, ndsr, cs, paths):
         """Initialize the object and our watches.
 
         args:
@@ -44,14 +44,10 @@ class Monitor(object):
                          '/bar': { 'children': 2 } }
         """
         log.debug('Initializing Monitor with Service Registry %s' % ndsr)
+        self._dispatcher = dispatcher
         self._ndsr = ndsr
         self._cs = cs
         self._paths = paths
-
-        # Create our Alerter object. All notifications of path compliance
-        # being out of spec are sent off to an Alerter.
-        # TODO(Fix this path)
-        self._alerter = email.EmailAlerter(self._cs)
 
         # Validate the supplied path configs
         self._validatePaths(paths)
@@ -131,82 +127,110 @@ class Monitor(object):
             self._ndsr.get(path, callback=self._pathUpdateCallback)
 
     def _pathUpdateCallback(self, data):
-        """Quick method executed when one of our watched paths
-        (defined below) is updated. This method receives updates
-        from the Service Registry when a path changes, calls out
-        to the _verifyCompliance() method, and if fires off an
-        alert if appropriate.
+        """Executed when one of our watched paths is updated.
+
+        This method receives updates from the Service Registry when
+        a path changes, calls out to the _get_compliance() method, and
+        updates the dispatcher with the new status and message.
 
         args:
             data: The data returned by the Service Registry.
         """
         path = data['path']
-        log.debug('Path change detected at %s' % path)
 
-        compliant = self._verifyCompliance(path)
+        new_state, reason = self._get_compliance(path)
 
-        # TODO: Make this idempotent -- we shouldn't fire an alert multiple
-        # times, but Zookeeper/Kazoo have a tendency to fire off callbacks
-        # multiple times. Need to maintain state somewhere.
-        if compliant is not True:
-            # Get the alert-specific settings and state for this particular
-            # path and pass that
-            try:
-                params = self._paths[path]['alerter']
-            except KeyError:
-                params = None
+        # NOTE: temporarily grab the old state, then update local knowledge to
+        # the new state. We need both (old and new) states to make a decision
+        # later, but the old one is stored in this object, and the new one is
+        # available only when coming into this method.
+        old_state = self._path_state(path)
+        self._path_state(path, new_state)
 
-            message = '%s failed check: %s' % (path, compliant)
-            self._alerter.alert(message=message, params=params)
+        log.debug('Path %s changed from %s to %s' % (
+            path, old_state, new_state))
+        if self._should_update_dispatcher(old_state, new_state):
+            # NOTE: update() will return a reference to an async task
+            # This code doesn't use it, but if the caller of this method
+            # wants to do something regarding this update (unit tests!)
+            # then it needs to be able to wait for it.
+            # *Must* return this reference.
+            return self._dispatcher.update(
+                path=path, state=new_state, reason=reason)
 
-    def _verifyCompliance(self, path):
-        """Verify whether a given path is currently within spec.
+    def _get_compliance(self, path):
+        """Check if a given path is currently within spec.
 
         args:
             path: The path to validate (must exist in self._paths)
 
-        returns:
-            True: Everything is happy
-
-            or
-
-            A string describing the failure.
+        returns: tuple
+            monitor.states: Message describing current status.
+            string: reason for the state above.
         """
-        # Begin with compliance being True
-        compliant = True
+        # Begin with no errors
+        state = states.UNKNOWN
+        reason = 'No information is available about this path.'
 
         # Load up the requirements for this path
         config = self._paths[path]
 
-        # If the config is empty, then there is no compliance testing.
-        if not config:
-            return compliant
-
         # If there is a minimum 'children' amount, check that.
-        if 'children' in config:
+        if config and 'children' in config:
+            # TODO: Pass in all needed data to _get_compliance() so it doesn't
+            # make direct SR calls.
             count = len(self._ndsr.get(path)['children'])
             log.debug('Comparing %s min children (%s) to current count (%s).' %
                       (path, config['children'], count))
             if count < config['children']:
-                msg = ('Found children (%s) less than minimum (%s)' %
-                       (count, config['children']))
-                return msg
+                state = states.ERROR
+                reason = ('%s children is less than minimum %s' %
+                          (count, config['children']))
+                log.debug(reason)
+            else:
+                state = states.OK
+                reason = 'All checks pass.'
 
         # Done checking things..
-        return compliant
+        return state, reason
 
-    def state(self):
+    def _should_update_dispatcher(self, old_state, new_state):
+        # Most conditions should update the dispatcher except a couple
+
+        silent_conditions = [
+            (states.UNKNOWN, states.OK),
+            (states.OK, states.OK),
+        ]
+
+        if (old_state, new_state) in silent_conditions:
+            # If transition from old to new state is something that we want to
+            # handle silently, then do not update the dispatcher
+            return False
+
+        # For all other cases - update it.
+        return True
+
+    def _path_state(self, path, new_state=None):
+        """Get or set a local knowledge of a path state."""
+
+        if new_state:
+            self._paths[path]['state'] = new_state
+
+        return self._paths[path].get('state', states.UNKNOWN)
+
+    def status(self):
         """Returns a dict with our current status."""
         # Begin our status dict
         status = {}
 
-        # Get our Alerter status
-        status['alerter'] = self._alerter.status()
-
         # For every path we are watching, get the live compliance status
         status['compliance'] = {}
+
         for path in self._paths:
-            status['compliance'][path] = self._verifyCompliance(path)
+            state, reason = self._get_compliance(path)
+            status['compliance'][path] = {}
+            status['compliance'][path]['state'] = state
+            status['compliance'][path]['message'] = reason
 
         # Return the whole thing
         return status

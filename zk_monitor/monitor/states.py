@@ -11,5 +11,6 @@
 # limitations under the License.
 #
 # Copyright 2014 Nextdoor.com, Inc
-
-__version__ = '0.1.1'  # http://semver.org/
+UNKNOWN = 'Unknown'
+ERROR = 'Error'
+OK = 'OK'

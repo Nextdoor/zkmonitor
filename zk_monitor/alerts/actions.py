@@ -12,4 +12,5 @@
 #
 # Copyright 2014 Nextdoor.com, Inc
 
-__version__ = '0.1.1'  # http://semver.org/
+NONE = 'No action on this path.'
+ALERT = 'This path is alerting.'

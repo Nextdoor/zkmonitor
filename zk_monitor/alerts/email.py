@@ -36,10 +36,16 @@ class EmailAlerter(base.AlerterBase):
             body: Hey bob, fix this!
           children: 1
     """
+
+    _saved_mail_backend = None
+
     @property
     def _mail_backend(self):
         """Returns a single EmailBackend object every time its called"""
-        return smtp.EmailBackend()
+        if not self._saved_mail_backend:
+            self._saved_mail_backend = smtp.EmailBackend()
+
+        return self._saved_mail_backend
 
     def _alert(self, message, params):
         """Send an email alert.
@@ -62,7 +68,12 @@ class EmailAlerter(base.AlerterBase):
         # here so we store no reference to it (and let it get garbage
         # collected on its own later)
         log.debug('Creating Email Alert Message: %s' % message)
-        EmailAlert(subject, body, email, self._mail_backend)
+        log.debug('Creating Email Alert with: %s' % EmailAlert)
+        EmailAlert(
+            subject=subject,
+            body=body,
+            email=email,
+            conn=self._mail_backend)
 
 
 class EmailAlert(object):

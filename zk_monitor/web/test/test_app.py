@@ -1,20 +1,11 @@
 from tornado import testing
-import mock
 
 from zk_monitor.web import app
 
 
 class TestApp(testing.AsyncHTTPTestCase):
     def get_app(self):
-        # Generate a real application server based on our test config data
-        self.mocked_sr = mock.MagicMock()
-        self.mocked_paths = {
-            '/should_have_1': [{'children': 1}],
-            '/should_have_2': [{'children': 2}],
-            '/should_have_0': [{'children': 0}],
-        }
-        server = app.getApplication(self.mocked_sr, self.mocked_paths)
-        return server
+        return app.getApplication(None, None, None)
 
     @testing.gen_test
     def testApp(self):

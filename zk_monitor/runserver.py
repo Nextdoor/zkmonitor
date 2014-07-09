@@ -19,17 +19,17 @@ Main entry-point script for zk_mnonitor.
 __author__ = 'Matt Wise (matt@nextdoor.com)'
 
 from tornado import ioloop
-import optparse
 import logging
 import nd_service_registry
+import optparse
 import yaml
 
 from zk_monitor import cluster
-from zk_monitor import utils
 from zk_monitor import monitor
+from zk_monitor import utils
+from zk_monitor.alerts import dispatcher
+from zk_monitor.version import __version__ as VERSION
 from zk_monitor.web import app
-
-from version import __version__ as VERSION
 
 log = logging.getLogger(__name__)
 
@@ -134,11 +134,16 @@ def main():
     workspace = '%s/%s' % (options.cluster_prefix, options.cluster_name)
     cs = cluster.State(sr, workspace)
 
+    # May instantiate this here instead of inside of Monitor
+    dis = dispatcher.Dispatcher(
+        cluster_state=cs,
+        config=paths)
+
     # Kick off our main monitoring object
-    mon = monitor.Monitor(sr, cs, paths)
+    mon = monitor.Monitor(dis, sr, cs, paths)
 
     # Build the HTTP service listening to the port supplied
-    server = app.getApplication(sr, mon)
+    server = app.getApplication(sr, mon, dis)
     server.listen(int(options.port))
     ioloop.IOLoop.instance().start()
 
