@@ -30,17 +30,20 @@ class AlerterBase(object):
         # classes that inherit this method.
         log.debug('Initializing Alerter "%s"' % self.__class__.__name__)
 
-    def alert(self, message, params=None):
+    def alert(self, path, state, message, params):
         """Fires off an Alert.
 
         args:
-            message: String to send
+            path: String of the path that is being alerted.
+            state: String of the monitor.states for given path.
+            message: String of details regarding this state.
             params: Dictionary of arbitrary parameters needed for specific
-                    alert type.
+                    alert type. For `email` it would be the address, for
+                    HipChat it would be the room id
         """
         # Using __class__.__name__ here to specify the name of the child
         # classes that inherit this method.
         log.warning('Firing Alert of type `%s` with "%s"' % (
             self.__class__.__name__, message))
 
-        self._alert(message, params=params)
+        self._alert(path, state, message, params)

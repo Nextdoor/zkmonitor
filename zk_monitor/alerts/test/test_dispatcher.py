@@ -20,7 +20,7 @@ class TestDispatcher(testing.AsyncTestCase):
         self.config = {'/bar': {'children': 1,
                                 'cancel_timeout': 0.25,
                                 'alerter': {'email': 'unit@test.com',
-                                            'body': 'unit test body',
+                                            'fake': 'unit test',
                                             'custom': 'something custom'}}}
 
         self._cs = mock.MagicMock(name='cluster.State')
@@ -89,6 +89,33 @@ class TestDispatcher(testing.AsyncTestCase):
                          "Alert should have been canceled.")
 
     @testing.gen_test
+    def test_dispatch_with_now_in_spec(self):
+        path = '/bar'
+        self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
+        self.dispatcher.send_alerts = mock.MagicMock()
+
+        # == First dispatch update with an error message - this one will wait
+        # for `cancel_timeout` seconds.
+        update_task = self.dispatcher.update(
+            path=path, state='Error', reason='Test')
+
+        # This time has to be *greater* than the cancel_timeout above
+        yield self.sleep(seconds=0.5)
+
+        # Original alert was sent.
+        self.dispatcher.send_alerts.assert_called_with('/bar')
+
+        # == Now simulate OK scenario which will cancel the alert.
+        self.dispatcher.update(path=path, state='OK', reason='Test')
+
+        # For the purpose of a unit test - wait for the first callback to
+        # finish
+        yield update_task
+
+        # Make sure we fired off an alert, and a followup
+        self.assertEquals(self.dispatcher.send_alerts.call_count, 2)
+
+    @testing.gen_test
     def test_dispatch_with_alert(self):
         path = '/bar'
         self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
@@ -118,16 +145,17 @@ class TestDispatcher(testing.AsyncTestCase):
         self.dispatcher.send_alerts(path)
 
         # Dispatcher should loop through everything that is under "alerter"
-        # setting.  alert call is hardcoded to assume email only for now.
-        email_params = {'body': 'unit test body', 'email': 'unit@test.com'}
+        # setting. The 'fake' alerter should not cause any problems.
+
         # Email...
         self.dispatcher.alerts['email'].alert.assert_called_with(
-            message='unittest',
-            params=email_params)
+            path='/bar', state='Unknown', message='unittest',
+            params=self.config['/bar']['alerter']['email'])
+
         # Testing for custom alerts not real until all alerts are standardized.
         self.dispatcher.alerts['custom'].alert.assert_called_with(
-            message='unittest',
-            params=email_params)
+            path='/bar', state='Unknown', message='unittest',
+            params=self.config['/bar']['alerter']['custom'])
 
     def test_lock(self):
         """Only one dispatcher should fire off alerts."""
@@ -162,8 +190,7 @@ class TestWithEmail(testing.AsyncTestCase):
         super(TestWithEmail, self).setUp()
 
         self.config = {'/foo': {'children': 1,
-                                'alerter': {'email': 'unit@test.com',
-                                            'body': 'Unit test body here.'}}}
+                                'alerter': {'email': 'unit@test.com'}}}
 
         self._cs = mock.MagicMock()
         self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
@@ -178,13 +205,13 @@ class TestWithEmail(testing.AsyncTestCase):
             mocked_email_alert.return_value = None  # important for __init__
 
             yield self.dispatcher.update(
-                path='/foo', state='Error', reason='Test')
+                path='/foo', state='Error', reason='Detailed reason')
 
             # Assertion below does really care about the 'conn' variable, but
             # it's required for assert_called_with to be exact.
             mocked_email_alert.assert_called_with(
-                subject='Test',
-                body='Unit test body here.',
+                subject='Warning! /foo has an alert!',
+                body='Detailed reason\n/foo is in the Error state.',
                 email='unit@test.com',
                 conn=self.dispatcher.alerts['email']._mail_backend
             )

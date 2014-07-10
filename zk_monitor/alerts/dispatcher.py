@@ -74,15 +74,35 @@ class Dispatcher(object):
             1) Create a pending alert status
             2) Wait to see if it gets cancelled
             3) Check the status and alert.
+
+        Args:
+            path: String of zk path that is being updated.
+            state: monitor.states - the new path state.
+            reason: String - message explaining why the state is updated.
         """
-        # import monitor here? otherwise circular loop
+        self._path_status(path, message=reason, state=state)
+
         if state == states.OK:
-            # Cancel the alert and bail out of here.
-            self._path_status(path, message=reason, next_action=actions.NONE)
-            raise gen.Return()
+            # Two scenarios here:
+            # 1) We come back to OK before we ever fired off the alert, so just
+            # cancel the alert and do nothing
+            # 2) We come back after it has been sent, so we need to send a
+            # "now in spec" follow up.
+            next_action = self._path_status(path)['next_action']
+            if next_action == actions.ALERT:
+                log.info('Cancelling an existing alert for %s' % path)
+                # Cancel the alert and bail out of here.
+                self._path_status(path, next_action=actions.NONE)
+                raise gen.Return()
+            elif next_action == actions.SENT:
+                log.info('Sending a "Now in Spec" alert for %s' % path)
+                # Send a "now in spec"
+                self._path_status(path, next_action=actions.NONE)
+                self.send_alerts(path)
+                raise gen.Return()
 
         # Set the alert, and continue to check your timer
-        self._path_status(path, message=reason, next_action=actions.ALERT)
+        self._path_status(path, next_action=actions.ALERT)
 
         # Check if we should timeout
         config = self._config[path]
@@ -102,6 +122,7 @@ class Dispatcher(object):
         log.debug('Action required by %s: "%s"' % (state, action))
         if action == actions.ALERT:
             self.send_alerts(path)
+            self._path_status(path, next_action=actions.SENT)
 
         raise gen.Return()
 
@@ -127,50 +148,51 @@ class Dispatcher(object):
 
     def send_alerts(self, path):
         """Send alert regarding this data."""
+        # Here 'message' explains why the alert was fired off.
+        # We use that as the details of the message.
         message = self._path_status(path)['message']
+        state = self._path_status(path)['state']
 
         config = self._config[path]
         for alert_type, params in config['alerter'].items():
             alert_engine = self.alerts.get(alert_type, None)
 
             if not alert_engine:
-                log.error('Alert type `%s` specified '
-                          'but not available' % alert_type)
+                log.warning('Alerter engine "%s" specified '
+                            'but not available to dispatcher.' % alert_type)
                 continue
 
             log.debug('Invoking alert type `%s`.' % alert_type)
 
-            # Making `body` optional. `message` is used as subject by the email
-            # engine.
-            body = config['alerter'].get('body', message)
+            alert_engine.alert(
+                path=path,
+                state=state,
+                message=message,
+                params=params)
 
-            # NOTE: Assuming email engine here until we can generalize it.
-
-            email_params = {'body': body,
-                            'email': config['alerter']['email']}
-            alert_engine.alert(message=message,
-                               params=email_params)
-
-    def _path_status(self, path, message=None, next_action=None):
+    def _path_status(self, path, **kwargs):
         """Get or create meta data for specific data path.
 
         Args:
-            path: Some zk registered path /foo
-            message: Human readable message/reason for an action.
-            next_action: alerts.actions value
+            path: string - some zk registered path /foo
+            kwargs: dictionary can be anything but here are some common keys:
+                state: monitor.states value.
+                message: reason for this state / message along with the action.
+                next_action: alerts.actions value.
         """
 
         if path not in self._live_path_status:
             self._live_path_status[path] = {
+                'state': states.UNKNOWN,
                 'message': False,
                 'next_action': None}
 
+        # Update local knowledge of the path metadata with any arbitrary
+        # keywords that were passed in
         path_data = self._live_path_status[path]
-        if message:
-            path_data['message'] = message
 
-        if next_action:
-            path_data['next_action'] = next_action
+        if kwargs:
+            path_data.update(kwargs)
 
         return path_data
 
