@@ -1,0 +1,4 @@
+include README.md
+include zk_monitor.1
+include requirements*
+recursive-include extras *
