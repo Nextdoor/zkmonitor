@@ -14,3 +14,4 @@
 
 NONE = 'No action on this path.'
 ALERT = 'This path is alerting.'
+SENT = 'Alert has been sent.'

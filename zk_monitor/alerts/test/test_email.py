@@ -25,6 +25,13 @@ class TestEmailAlerter(unittest.TestCase):
             email='unit@test.com',
             conn=backend_instance)
 
+    def testNotValid(self):
+        # _alert() should exit if "params" is not defined.
+        self.assertEquals(
+            None,
+            self.alerter._alert(
+                '/foo', 'Broken', 'Unit Test Message', {}))
+
     def testSingleBackend(self):
         once = self.alerter._mail_backend
         twice = self.alerter._mail_backend

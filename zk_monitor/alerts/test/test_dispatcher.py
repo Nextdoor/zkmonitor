@@ -20,6 +20,7 @@ class TestDispatcher(testing.AsyncTestCase):
         self.config = {'/bar': {'children': 1,
                                 'cancel_timeout': 0.25,
                                 'alerter': {'email': 'unit@test.com',
+                                            'fake': 'unit test',
                                             'custom': 'something custom'}}}
 
         self._cs = mock.MagicMock(name='cluster.State')
@@ -88,6 +89,33 @@ class TestDispatcher(testing.AsyncTestCase):
                          "Alert should have been canceled.")
 
     @testing.gen_test
+    def test_dispatch_with_now_in_spec(self):
+        path = '/bar'
+        self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
+        self.dispatcher.send_alerts = mock.MagicMock()
+
+        # == First dispatch update with an error message - this one will wait
+        # for `cancel_timeout` seconds.
+        update_task = self.dispatcher.update(
+            path=path, state='Error', reason='Test')
+
+        # This time has to be *greater* than the cancel_timeout above
+        yield self.sleep(seconds=0.5)
+
+        # Original alert was sent.
+        self.dispatcher.send_alerts.assert_called_with('/bar')
+
+        # == Now simulate OK scenario which will cancel the alert.
+        self.dispatcher.update(path=path, state='OK', reason='Test')
+
+        # For the purpose of a unit test - wait for the first callback to
+        # finish
+        yield update_task
+
+        # Make sure we fired off an alert, and a followup
+        self.assertEquals(self.dispatcher.send_alerts.call_count, 2)
+
+    @testing.gen_test
     def test_dispatch_with_alert(self):
         path = '/bar'
         self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
@@ -117,7 +145,7 @@ class TestDispatcher(testing.AsyncTestCase):
         self.dispatcher.send_alerts(path)
 
         # Dispatcher should loop through everything that is under "alerter"
-        # setting.
+        # setting. The 'fake' alerter should not cause any problems.
 
         # Email...
         self.dispatcher.alerts['email'].alert.assert_called_with(

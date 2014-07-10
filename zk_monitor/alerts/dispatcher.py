@@ -83,9 +83,23 @@ class Dispatcher(object):
         self._path_status(path, message=reason, state=state)
 
         if state == states.OK:
-            # Cancel the alert and bail out of here.
-            self._path_status(path, next_action=actions.NONE)
-            raise gen.Return()
+            # Two scenarios here:
+            # 1) We come back to OK before we ever fired off the alert, so just
+            # cancel the alert and do nothing
+            # 2) We come back after it has been sent, so we need to send a
+            # "now in spec" follow up.
+            next_action = self._path_status(path)['next_action']
+            if next_action == actions.ALERT:
+                log.info('Cancelling an existing alert for %s' % path)
+                # Cancel the alert and bail out of here.
+                self._path_status(path, next_action=actions.NONE)
+                raise gen.Return()
+            elif next_action == actions.SENT:
+                log.info('Sending a "Now in Spec" alert for %s' % path)
+                # Send a "now in spec"
+                self._path_status(path, next_action=actions.NONE)
+                self.send_alerts(path)
+                raise gen.Return()
 
         # Set the alert, and continue to check your timer
         self._path_status(path, next_action=actions.ALERT)
@@ -108,6 +122,7 @@ class Dispatcher(object):
         log.debug('Action required by %s: "%s"' % (state, action))
         if action == actions.ALERT:
             self.send_alerts(path)
+            self._path_status(path, next_action=actions.SENT)
 
         raise gen.Return()
 
