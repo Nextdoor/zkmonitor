@@ -16,7 +16,8 @@ class TestBaseAlerter(unittest.TestCase):
         self.alerter._alert = mock.MagicMock()
 
         # Fire off an alert?
-        self.alerter.alert('unittest')
+        self.alerter.alert('path', 'state', 'message', 'params')
 
         # Now validate that only one alert was sent
-        self.alerter._alert.assert_called_once_with('unittest', params=None)
+        self.alerter._alert.assert_called_once_with(
+            'path', 'state', 'message', 'params')

@@ -20,7 +20,6 @@ class TestDispatcher(testing.AsyncTestCase):
         self.config = {'/bar': {'children': 1,
                                 'cancel_timeout': 0.25,
                                 'alerter': {'email': 'unit@test.com',
-                                            'body': 'unit test body',
                                             'custom': 'something custom'}}}
 
         self._cs = mock.MagicMock(name='cluster.State')
@@ -118,16 +117,17 @@ class TestDispatcher(testing.AsyncTestCase):
         self.dispatcher.send_alerts(path)
 
         # Dispatcher should loop through everything that is under "alerter"
-        # setting.  alert call is hardcoded to assume email only for now.
-        email_params = {'body': 'unit test body', 'email': 'unit@test.com'}
+        # setting.
+
         # Email...
         self.dispatcher.alerts['email'].alert.assert_called_with(
-            message='unittest',
-            params=email_params)
+            path='/bar', state='Unknown', message='unittest',
+            params=self.config['/bar']['alerter']['email'])
+
         # Testing for custom alerts not real until all alerts are standardized.
         self.dispatcher.alerts['custom'].alert.assert_called_with(
-            message='unittest',
-            params=email_params)
+            path='/bar', state='Unknown', message='unittest',
+            params=self.config['/bar']['alerter']['custom'])
 
     def test_lock(self):
         """Only one dispatcher should fire off alerts."""
@@ -162,8 +162,7 @@ class TestWithEmail(testing.AsyncTestCase):
         super(TestWithEmail, self).setUp()
 
         self.config = {'/foo': {'children': 1,
-                                'alerter': {'email': 'unit@test.com',
-                                            'body': 'Unit test body here.'}}}
+                                'alerter': {'email': 'unit@test.com'}}}
 
         self._cs = mock.MagicMock()
         self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
@@ -178,13 +177,13 @@ class TestWithEmail(testing.AsyncTestCase):
             mocked_email_alert.return_value = None  # important for __init__
 
             yield self.dispatcher.update(
-                path='/foo', state='Error', reason='Test')
+                path='/foo', state='Error', reason='Detailed reason')
 
             # Assertion below does really care about the 'conn' variable, but
             # it's required for assert_called_with to be exact.
             mocked_email_alert.assert_called_with(
-                subject='Test',
-                body='Unit test body here.',
+                subject='Warning! /foo has an alert!',
+                body='Detailed reason\n/foo is in the Error state.',
                 email='unit@test.com',
                 conn=self.dispatcher.alerts['email']._mail_backend
             )

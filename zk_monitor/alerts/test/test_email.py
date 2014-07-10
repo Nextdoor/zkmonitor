@@ -16,20 +16,14 @@ class TestEmailAlerter(unittest.TestCase):
     @mock.patch('zk_monitor.alerts.email.EmailAlert')
     def testAlert(self, mocked_alert, mocked_backend):
         backend_instance = mocked_backend.return_value
-        params = {
-            'body': 'Unit Test Body',
-            'email': 'unit@test.com',
-        }
-        self.alerter._alert('Unit Test Message', params)
+
+        self.alerter._alert('/foo', 'Broken',
+                            'Unit Test Message', 'unit@test.com')
         mocked_alert.assert_called_with(
-            subject='Unit Test Message',
-            body='Unit Test Body',
+            subject='Warning! /foo has an alert!',
+            body='Unit Test Message\n/foo is in the Broken state.',
             email='unit@test.com',
             conn=backend_instance)
-
-    def testAlertWithBadParams(self):
-        self.assertEquals(None, self.alerter.alert('unittest', params=None))
-        self.assertEquals(None, self.alerter.alert('unittest', params={}))
 
     def testSingleBackend(self):
         once = self.alerter._mail_backend
