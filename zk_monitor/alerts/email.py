@@ -26,14 +26,13 @@ class EmailAlerter(base.AlerterBase):
     """Simple Email-based Alerter Object
 
     This object handles incoming alert calls from the main
-    zk_monitor.monitor.Monitor class and converts them into email messages.
+    zk_monitor.alerts.Dispatcher class and converts them into email messages.
     Your zk_monitor YAML configuration file must include (for each path) a
     configured 'alerter' section like this:
 
         /services/foo/min_1:
           alerter:
             email: you@home.com
-            body: Hey bob, fix this!
           children: 1
     """
 
