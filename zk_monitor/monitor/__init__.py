@@ -126,7 +126,7 @@ class Monitor(object):
             log.debug('Asking to watch %s' % path)
             self._ndsr.get(path, callback=self._pathUpdateCallback)
 
-    def _pathUpdateCallback(self, data):
+    def _pathUpdateCallback(self, data, _unit_test=False):
         """Executed when one of our watched paths is updated.
 
         This method receives updates from the Service Registry when
@@ -135,6 +135,8 @@ class Monitor(object):
 
         args:
             data: The data returned by the Service Registry.
+            _unit_test: Boolean that changes the return value. Read comments on
+                        the bottom.
         """
         path = data['path']
 
@@ -150,13 +152,18 @@ class Monitor(object):
         log.debug('Path %s changed from %s to %s' % (
             path, old_state, new_state))
         if self._should_update_dispatcher(old_state, new_state):
-            # NOTE: update() will return a reference to an async task
-            # This code doesn't use it, but if the caller of this method
-            # wants to do something regarding this update (unit tests!)
-            # then it needs to be able to wait for it.
-            # *Must* return this reference.
-            return self._dispatcher.update(
+            # The call to .update() returns the "future" object. We don't yield
+            # it here because we don't want to wait for the update to finish.
+            # For unit test purposes we want to return this object so that the
+            # test can wait, but not the actual run of this server. Kazoo on
+            # the other hand expects this "callback" function to NOT RETURN
+            # ANYTHING! If anything is returned, then the lock is never
+            # released.
+            async_update = self._dispatcher.update(
                 path=path, state=new_state, reason=reason)
+
+            if _unit_test:
+                return async_update
 
     def _get_compliance(self, path):
         """Check if a given path is currently within spec.

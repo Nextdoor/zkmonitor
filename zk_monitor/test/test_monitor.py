@@ -91,7 +91,10 @@ class TestMonitor(testing.AsyncTestCase):
             }
             return data[path]
         self.mocked_ndsr.get = bar_one_child
-        self.monitor._pathUpdateCallback({'path': '/bar'})
+        ret = self.monitor._pathUpdateCallback({'path': '/bar'})
+
+        # Kazoo cannot have any return value from the callback
+        self.assertEquals(ret, None)
         self.monitor._dispatcher.update.assert_called_with(
             path='/bar',
             state='Error',
@@ -199,7 +202,6 @@ class TestWithDispatcher(testing.AsyncTestCase):
             }
             return data[path]
         self.mocked_ndsr.get = one_child
-        yield self.monitor._pathUpdateCallback({'path': '/foo'})
-        (self.monitor._dispatcher
-                     .send_alerts
-                     .assert_called_with('/foo'))
+        yield self.monitor._pathUpdateCallback({'path': '/foo'},
+                                               _unit_test=True)
+        self.monitor._dispatcher.send_alerts.assert_called_with('/foo')
