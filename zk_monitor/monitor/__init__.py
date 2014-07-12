@@ -21,6 +21,8 @@ their state, compliance is validated and the appropriate alerts are dispatched.
 
 import logging
 
+from tornado.ioloop import IOLoop
+
 from zk_monitor.monitor import states
 
 log = logging.getLogger(__name__)
@@ -159,11 +161,14 @@ class Monitor(object):
             # the other hand expects this "callback" function to NOT RETURN
             # ANYTHING! If anything is returned, then the lock is never
             # released.
-            async_update = self._dispatcher.update(
-                path=path, state=new_state, reason=reason)
+            self.issue_dispatch_update(path, new_state, reason)
 
-            if _unit_test:
-                return async_update
+    def issue_dispatch_update(self, path, new_state, reason):
+        # Separates sync from async calls, by throwing the dispatcher (sync)
+        # method call into the ioloop queue, and exiting immediately.
+        IOLoop.instance().add_callback(
+            self._dispatcher.update,
+            path=path, state=new_state, reason=reason)
 
     def _get_compliance(self, path):
         """Check if a given path is currently within spec.
