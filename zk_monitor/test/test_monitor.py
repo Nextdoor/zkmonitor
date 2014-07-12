@@ -3,7 +3,6 @@ import mock
 from tornado import testing
 
 from zk_monitor import monitor
-from zk_monitor.alerts import dispatcher
 
 import logging
 
@@ -82,6 +81,13 @@ class TestMonitor(testing.AsyncTestCase):
         ]
         self.mocked_ndsr.get.assert_has_calls(expected_calls)
 
+    @mock.patch('tornado.ioloop.IOLoop.instance')
+    def test_add_callback(self, mocked_ioinst):
+        mocked_ioinst().add_callback = mock.MagicMock(name='AddCallback')
+        self.monitor.issue_dispatch_update('/foo', 'state', 'test')
+        mocked_ioinst().add_callback.assert_called_with(
+            self.mocked_disp.update, path='/foo', reason='test', state='state')
+
     @testing.gen_test
     def testPathUpdateCallback(self):
         def bar_one_child(path):
@@ -91,14 +97,12 @@ class TestMonitor(testing.AsyncTestCase):
             }
             return data[path]
         self.mocked_ndsr.get = bar_one_child
+        self.monitor.issue_dispatch_update = mock.Mock()
         ret = self.monitor._pathUpdateCallback({'path': '/bar'})
 
         # Kazoo cannot have any return value from the callback
         self.assertEquals(ret, None)
-        self.monitor._dispatcher.update.assert_called_with(
-            path='/bar',
-            state='Error',
-            reason='1 children is less than minimum 2')
+        self.monitor.issue_dispatch_update.assert_called()
 
     @testing.gen_test
     def testPathUpdateCallbackWithAlerterParams(self):
@@ -109,10 +113,10 @@ class TestMonitor(testing.AsyncTestCase):
             }
             return data[path]
         self.mocked_ndsr.get = side_effect
+        self.monitor.issue_dispatch_update = mock.Mock()
         self.monitor._pathUpdateCallback({'path': '/foo'})
-        self.monitor._dispatcher.update.assert_called_with(
-            path='/foo',
-            state='Error', reason='0 children is less than minimum 1')
+
+        self.monitor.issue_dispatch_update.assert_called()
 
     def testVerifyCompliance(self):
         def side_effect(path):
@@ -164,44 +168,3 @@ class TestMonitor(testing.AsyncTestCase):
         self.assertEquals('OK', ret_val['compliance']['/foo']['state'])
         self.assertEquals('Error', ret_val['compliance']['/bar']['state'])
         self.assertEquals('Unknown', ret_val['compliance']['/baz']['state'])
-
-
-# Integration test
-class TestWithDispatcher(testing.AsyncTestCase):
-    def setUp(self):
-        super(TestWithDispatcher, self).setUp()
-
-        self.mocked_ndsr = mock.MagicMock()
-        self.mocked_cs = mock.MagicMock()
-        self.paths = {
-            '/foo': {'children': 1, 'alerter': {'email': 'unit@test.com'}},
-            '/bar': {'children': 2},
-            '/baz': None}
-
-        self.dispatcher = dispatcher.Dispatcher(self.mocked_cs, self.paths)
-        # We want to keep the dispatcher real, but not alert anything.
-        self.dispatcher.send_alerts = mock.MagicMock()
-
-        self.monitor = monitor.Monitor(
-            self.dispatcher,
-            self.mocked_ndsr,
-            self.mocked_cs,
-            self.paths)
-
-    @testing.gen_test
-    def test_dispatched_alert(self):
-        """Test that monitor causes an actual alert when something is broken.
-
-        Unit tests cover that dispatcher is updated, here we test that the
-        integration between Monitor and an actual send_alert() function exists.
-        """
-        def one_child(path):
-            data = {
-                '/foo': {'data': None, 'stat': None,
-                         'children': []},
-            }
-            return data[path]
-        self.mocked_ndsr.get = one_child
-        yield self.monitor._pathUpdateCallback({'path': '/foo'},
-                                               _unit_test=True)
-        self.monitor._dispatcher.send_alerts.assert_called_with('/foo')
