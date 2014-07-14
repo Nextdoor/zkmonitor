@@ -97,6 +97,8 @@ class HipchatAlerter(base.AlerterBase):
 
         log.debug('Fetching RESTful api call: %s' % request)
         log.debug('client: %s' % http_client)
+        # Firing off an async "fetch" here and registering a callback to our
+        # helper method for logging.
         http_client.fetch(request, self._handle_request)
 
     def _handle_request(self, response):
