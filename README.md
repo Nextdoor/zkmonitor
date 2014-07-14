@@ -1,5 +1,10 @@
 # Zookeeper Node Monitoring Daemon
 
+![Build Status](https://api.travis-ci.org/Nextdoor/zkmonitor.png?branch=master)
+![# of downloads](https://pypip.in/d/zk_monitor/badge.png)
+![pypy version](https://badge.fury.io/py/zk_monitor.png)
+
+
 This is a simple daemon for monitoring particular Zookeeper nodes for
 compliance with a given set of specifications (ie, minimum number of
 registered nodes). In the event that a path changes and becomes out of

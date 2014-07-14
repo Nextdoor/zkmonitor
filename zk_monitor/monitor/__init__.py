@@ -154,18 +154,19 @@ class Monitor(object):
         log.debug('Path %s changed from %s to %s' % (
             path, old_state, new_state))
         if self._should_update_dispatcher(old_state, new_state):
-            # The call to .update() returns the "future" object. We don't yield
-            # it here because we don't want to wait for the update to finish.
-            # For unit test purposes we want to return this object so that the
-            # test can wait, but not the actual run of this server. Kazoo on
-            # the other hand expects this "callback" function to NOT RETURN
-            # ANYTHING! If anything is returned, then the lock is never
-            # released.
             self.issue_dispatch_update(path, new_state, reason)
 
     def issue_dispatch_update(self, path, new_state, reason):
-        # Separates sync from async calls, by throwing the dispatcher (sync)
-        # method call into the ioloop queue, and exiting immediately.
+        """Update dispatcher in a async-coroutine fashion.
+
+        path, new_state and reason are expected by Dispatcher.update() method.
+
+        Args:
+            path: String of zk path.
+            new_state: One of monitor.states.
+            reason: String - reason for the update.
+        """
+
         IOLoop.instance().add_callback(
             self._dispatcher.update,
             path=path, state=new_state, reason=reason)
