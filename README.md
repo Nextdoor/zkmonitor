@@ -86,7 +86,7 @@ the current compliance of your watched Zookeeper nodes.
 
 This page provides a simple live status of the app and its monitors.
 
-    $ curl --silent  http://localhost:8080/status | python -m json.tool
+    $ curl --silent  http://localhost:8080/status
     {
         "monitor": {
             "alerter": {
