@@ -8,6 +8,7 @@ from tornado.ioloop import IOLoop
 
 from zk_monitor.alerts import dispatcher
 from zk_monitor.alerts import email
+from zk_monitor.alerts import rest
 
 
 log = logging.getLogger(__name__)
@@ -215,7 +216,7 @@ class TestWithEmail(testing.AsyncTestCase):
 
     @testing.gen_test
     def test_dispatch_without_timeout(self):
-        """Test dispatcher->EmailAlerter.alert() chain."""
+        """Test dispatcher->EmailAlert.alert() chain."""
 
         with mock.patch.object(email.EmailAlert,
                                '__init__') as mocked_email_alert:
@@ -233,3 +234,34 @@ class TestWithEmail(testing.AsyncTestCase):
                 email='unit@test.com',
                 conn=self.dispatcher.alerts['email']._mail_backend
             )
+
+
+class TestWithHipchat(testing.AsyncTestCase):
+    def setUp(self):
+        super(TestWithHipchat, self).setUp()
+
+        self.config = {'/foo': {'children': 1,
+                                'alerter': {
+                                    'hipchat': {
+                                        'token': '123',
+                                        'room': 'UnitTest'}}}}
+
+        self._cs = mock.MagicMock()
+
+    @testing.gen_test
+    def test_dispatch_without_timeout(self):
+        """Test dispatcher->HipchatAlerter.alert() chain."""
+
+        with mock.patch.object(rest.HipchatAlerter,
+                               '_alert') as mocked_alerter:
+
+            self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
+
+            yield self.dispatcher.update(
+                path='/foo', state='Error', reason='Detailed reason')
+
+            # Assertion below does really care about the 'conn' variable, but
+            # it's required for assert_called_with to be exact.
+            mocked_alerter.assert_called_with(
+                '/foo', 'Error', 'Detailed reason',
+                self.config['/foo']['alerter']['hipchat'])
