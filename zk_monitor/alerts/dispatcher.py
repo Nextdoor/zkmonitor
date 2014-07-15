@@ -147,7 +147,12 @@ class Dispatcher(object):
         raise gen.Return()
 
     def send_alerts(self, path):
-        """Send alert regarding this data."""
+        """Send alert regarding this path."""
+
+        if not self._lock.status():
+            log.debug('Not the primary dispatcher; not sending alerts.')
+            return False
+
         # Here 'message' explains why the alert was fired off.
         # We use that as the details of the message.
         message = self._path_status(path)['message']

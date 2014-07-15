@@ -157,6 +157,24 @@ class TestDispatcher(testing.AsyncTestCase):
             path='/bar', state='Unknown', message='unittest',
             params=self.config['/bar']['alerter']['custom'])
 
+    def test_not_send_alerts(self):
+        """Dispatcher should check if it's the alerting type."""
+
+        path = '/bar'
+        bad_cs = mock.MagicMock()
+        bad_cs.getLock().status.return_value = False
+        self.dispatcher = dispatcher.Dispatcher(bad_cs, self.config)
+        self.dispatcher.alerts['email'] = mock.MagicMock()
+
+        # Set data, and send the alert
+        self.dispatcher._path_status(path, message='unittest')
+        ret = self.dispatcher.send_alerts(path)
+
+        self.assertFalse(ret)  # Did not send anything!
+
+        # Email...
+        self.dispatcher.alerts['email'].alert.assert_not_called()
+
     def test_lock(self):
         """Only one dispatcher should fire off alerts."""
 
