@@ -19,6 +19,7 @@ from tornado import gen
 from tornado.ioloop import IOLoop
 
 from zk_monitor.alerts import email
+from zk_monitor.alerts import rest
 from zk_monitor.alerts import actions
 from zk_monitor.monitor import states
 
@@ -56,6 +57,7 @@ class Dispatcher(object):
 
         self.alerts = {}
         self.alerts['email'] = email.EmailAlerter()
+        self.alerts['hipchat'] = rest.HipchatAlerter()
 
         self._begin_lock()
 
