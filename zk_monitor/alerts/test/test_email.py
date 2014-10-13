@@ -55,6 +55,22 @@ class TestEmailAlert(unittest.TestCase):
             from_email='zk_monitor',
             connection=self.conn)
 
+        email.EmailAlert(self.msg, self.body, ['multiple', 'emails'], self.conn)
+        mocked_message.assert_called_with(
+            subject=self.msg,
+            body=self.body,
+            to=['multiple', 'emails'],
+            from_email='zk_monitor',
+            connection=self.conn)
+
+        email.EmailAlert(self.msg, self.body, 'multiple, emails', self.conn)
+        mocked_message.assert_called_with(
+            subject=self.msg,
+            body=self.body,
+            to=['multiple', 'emails'],
+            from_email='zk_monitor',
+            connection=self.conn)
+
     @mock.patch('tornadomail.message.EmailMessage')
     def testAlertSent(self, mocked_message):
         alert = email.EmailAlert(self.msg, self.body, self.email, self.conn)

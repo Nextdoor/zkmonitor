@@ -16,8 +16,6 @@ import os
 import sys
 import shutil
 
-import nose
-
 from distutils.command.clean import clean
 from distutils.command.sdist import sdist
 from setuptools import Command
@@ -99,6 +97,8 @@ class UnitTestCommand(Command):
 
     def run(self):
         maybe_rm('.coverage')
+
+        import nose
         val = nose.run(argv=self.args)
 
         if not val:
