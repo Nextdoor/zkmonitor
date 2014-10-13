@@ -153,7 +153,7 @@ setup(
     setup_requires=open('requirements.txt').readlines(),
     install_requires=open('requirements.txt').readlines(),
     dependency_links = [
-      'https://github.com/equeny/tornadomail/archive/e413b81450bf94b4db3cad1815affb8b2dce6b41.zip#egg=tornadomail-master',
+      'https://github.com/equeny/tornadomail/archive/95f4ad5cb7c7a180076256b46be151ad25e57017.zip#egg=tornadomail-master',
     ],
     entry_points={
         'console_scripts': [
