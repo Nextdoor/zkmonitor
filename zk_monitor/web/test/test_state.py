@@ -39,7 +39,6 @@ class StatusHandlerIntegrationTests(testing.AsyncHTTPTestCase):
                 dict(settings=self.settings))]
         return web.Application(URLS)
 
-    @testing.gen_test
     def testState(self):
         """Make sure the returned state information is valid"""
         self.mocked_ndsr._zk.connected = True

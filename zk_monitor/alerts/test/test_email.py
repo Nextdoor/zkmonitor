@@ -55,7 +55,8 @@ class TestEmailAlert(unittest.TestCase):
             from_email='zk_monitor',
             connection=self.conn)
 
-        email.EmailAlert(self.msg, self.body, ['multiple', 'emails'], self.conn)
+        email.EmailAlert(self.msg, self.body, ['multiple', 'emails'],
+                         self.conn)
         mocked_message.assert_called_with(
             subject=self.msg,
             body=self.body,
