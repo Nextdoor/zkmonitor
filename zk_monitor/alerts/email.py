@@ -62,7 +62,7 @@ class EmailAlerter(base.AlerterBase):
         to_address = params
         if not to_address:
             log.error('Invalid email address from params: %s' % params)
-            raise gen.Return(False)
+            raise gen.Return()
 
         # Subject should not be status or message dependent to allow for proper
         # email threading.
