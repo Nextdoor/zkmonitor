@@ -13,6 +13,7 @@
 # Copyright 2014 Nextdoor.com, Inc
 
 import logging
+import re
 
 from tornadomail import message
 from tornadomail.backends import smtp
@@ -93,13 +94,18 @@ class EmailAlert(object):
         log.info('[%s] Message Instance Created' % subject)
         self._subject = subject
 
+        if type(email) == str:
+            email = re.compile('[, ]+').split(email)
+        elif type(email) != list:
+            log.error('Input %s must be string, or array of strings' % email)
+
         # Send the message and register a callback to our helper method for
         # logging when the message has been sent.
         msg = message.EmailMessage(
             subject=subject,
             body=body,
             from_email='zk_monitor',
-            to=[email],
+            to=email,
             connection=conn)
         msg.send(callback=self._alertSent)
 

@@ -9,7 +9,6 @@ class RootHandlerIntegrationTests(testing.AsyncHTTPTestCase):
     def get_app(self):
         return web.Application([('/', root.RootHandler)])
 
-    @testing.gen_test
     def testIndexIncludesVersion(self):
         """Make sure the version number was presented properly"""
         self.http_client.fetch(self.get_url('/'), self.stop)
