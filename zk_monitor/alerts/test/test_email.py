@@ -1,12 +1,13 @@
 import mock
 
-from tornado.testing import unittest
+from tornado import testing
 
 from zk_monitor.alerts import email
 
 
-class TestEmailAlerter(unittest.TestCase):
+class TestEmailAlerter(testing.AsyncTestCase):
     def setUp(self):
+        super(TestEmailAlerter, self).setUp()
         self.mocked_cs = mock.MagicMock()
         self.mocked_lock = mock.MagicMock()
         self.mocked_cs.getLock.return_value = self.mocked_lock
@@ -25,12 +26,12 @@ class TestEmailAlerter(unittest.TestCase):
             email='unit@test.com',
             conn=backend_instance)
 
+    @testing.gen_test
     def testNotValid(self):
         # _alert() should exit if "params" is not defined.
-        self.assertEquals(
-            None,
-            self.alerter._alert(
-                '/foo', 'Broken', 'Unit Test Message', {}))
+        res = yield self.alerter._alert(
+            '/foo', 'Broken', 'Unit Test Message', {})
+        self.assertEquals(None, res)
 
     def testSingleBackend(self):
         once = self.alerter._mail_backend
@@ -38,8 +39,9 @@ class TestEmailAlerter(unittest.TestCase):
         self.assertEqual(once, twice)
 
 
-class TestEmailAlert(unittest.TestCase):
+class TestEmailAlert(testing.AsyncTestCase):
     def setUp(self):
+        super(TestEmailAlert, self).setUp()
         self.msg = 'unit test msg'
         self.body = 'unit test body'
         self.email = 'unit@test.com'
@@ -47,6 +49,7 @@ class TestEmailAlert(unittest.TestCase):
 
     @mock.patch('tornadomail.message.EmailMessage')
     def testInit(self, mocked_message):
+        email.EmailAlert(self.msg, self.body, None, self.conn)
         email.EmailAlert(self.msg, self.body, self.email, self.conn)
         mocked_message.assert_called_with(
             subject=self.msg,

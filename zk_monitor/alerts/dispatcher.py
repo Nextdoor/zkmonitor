@@ -100,7 +100,7 @@ class Dispatcher(object):
                 log.info('Sending a "Now in Spec" alert for %s' % path)
                 # Send a "now in spec"
                 self._path_status(path, next_action=actions.NONE)
-                self.send_alerts(path)
+                yield self.send_alerts(path)
                 raise gen.Return()
 
         # Set the alert, and continue to check your timer
@@ -123,7 +123,7 @@ class Dispatcher(object):
 
         log.debug('Action required by %s: "%s"' % (state, action))
         if action == actions.ALERT:
-            self.send_alerts(path)
+            yield self.send_alerts(path)
             self._path_status(path, next_action=actions.SENT)
 
         raise gen.Return()
@@ -148,12 +148,13 @@ class Dispatcher(object):
 
         raise gen.Return()
 
+    @gen.coroutine
     def send_alerts(self, path):
         """Send alert regarding this path."""
 
         if not self._lock.status():
             log.debug('Not the primary dispatcher; not sending alerts.')
-            return False
+            raise gen.Return(False)
 
         # Here 'message' explains why the alert was fired off.
         # We use that as the details of the message.
@@ -171,7 +172,7 @@ class Dispatcher(object):
 
             log.debug('Invoking alert type `%s`.' % alert_type)
 
-            alert_engine.alert(
+            yield alert_engine.alert(
                 path=path,
                 state=state,
                 message=message,

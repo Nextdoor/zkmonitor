@@ -14,6 +14,8 @@
 
 import logging
 
+from tornado import gen
+
 log = logging.getLogger(__name__)
 
 
@@ -30,6 +32,7 @@ class AlerterBase(object):
         # classes that inherit this method.
         log.debug('Initializing Alerter "%s"' % self.__class__.__name__)
 
+    @gen.coroutine
     def alert(self, path, state, message, params):
         """Fires off an Alert.
 
@@ -46,4 +49,4 @@ class AlerterBase(object):
         log.warning('Firing Alert of type `%s` with "%s"' % (
             self.__class__.__name__, message))
 
-        self._alert(path, state, message, params)
+        yield self._alert(path, state, message, params)

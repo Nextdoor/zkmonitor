@@ -15,6 +15,7 @@
 import logging
 import re
 
+from tornado import gen
 from tornadomail import message
 from tornadomail.backends import smtp
 
@@ -47,6 +48,7 @@ class EmailAlerter(base.AlerterBase):
 
         return self._saved_mail_backend
 
+    @gen.coroutine
     def _alert(self, path, state, message, params):
         """Send an email alert.
 
@@ -60,7 +62,7 @@ class EmailAlerter(base.AlerterBase):
         to_address = params
         if not to_address:
             log.error('Invalid email address from params: %s' % params)
-            return
+            raise gen.Return()
 
         # Subject should not be status or message dependent to allow for proper
         # email threading.

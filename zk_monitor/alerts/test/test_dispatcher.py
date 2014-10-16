@@ -14,6 +14,34 @@ from zk_monitor.alerts import rest
 log = logging.getLogger(__name__)
 
 
+def mock_tornado(value=None):
+    """Creates a mock for a coroutine function that returns `value`"""
+
+    @gen.coroutine
+    def call(*args, **kwargs):
+        call._call_count = call._call_count + 1
+        call._last_args = args
+        call._last_kwargs = kwargs
+        raise gen.Return(value)
+
+    call._call_count = 0
+    return call
+
+
+def class_mock_tornado(value=None):
+    """Creates a mock for a coroutine function that returns `value`"""
+
+    @gen.coroutine
+    def call(self, *args, **kwargs):
+        call._call_count = call._call_count + 1
+        call._last_args = args
+        call._last_kwargs = kwargs
+        raise gen.Return(value)
+
+    call._call_count = 0
+    return call
+
+
 class TestDispatcher(testing.AsyncTestCase):
     def setUp(self):
         super(TestDispatcher, self).setUp()
@@ -41,7 +69,7 @@ class TestDispatcher(testing.AsyncTestCase):
         config_no_timeout[path]['cancel_timeout'] = None
 
         self.dispatcher = dispatcher.Dispatcher(self._cs, config_no_timeout)
-        self.dispatcher.send_alerts = mock.MagicMock()
+        self.dispatcher.send_alerts = mock_tornado()
 
         # == First dispatch update with an error message
         update_task = self.dispatcher.update(
@@ -59,8 +87,7 @@ class TestDispatcher(testing.AsyncTestCase):
         yield update_task
 
         # Make sure we fired off an alert.
-        self.assertTrue(self.dispatcher.send_alerts.called, (
-            "Alert should have been fired off before being canceled."))
+        self.assertEquals(self.dispatcher.send_alerts._call_count, 2)
 
     @testing.gen_test
     def test_dispatch_with_cancellation(self):
@@ -93,34 +120,35 @@ class TestDispatcher(testing.AsyncTestCase):
     def test_dispatch_with_now_in_spec(self):
         path = '/bar'
         self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
-        self.dispatcher.send_alerts = mock.MagicMock()
+        self.dispatcher.send_alerts = mock_tornado()
 
         # == First dispatch update with an error message - this one will wait
         # for `cancel_timeout` seconds.
-        update_task = self.dispatcher.update(
+        yield self.dispatcher.update(
             path=path, state='Error', reason='Test')
 
         # This time has to be *greater* than the cancel_timeout above
         yield self.sleep(seconds=0.5)
 
         # Original alert was sent.
-        self.dispatcher.send_alerts.assert_called_with('/bar')
+        self.assertEquals(self.dispatcher.send_alerts._call_count, 1)
+        self.assertEquals(self.dispatcher.send_alerts._last_args, ('/bar',))
 
         # == Now simulate OK scenario which will cancel the alert.
         self.dispatcher.update(path=path, state='OK', reason='Test')
 
         # For the purpose of a unit test - wait for the first callback to
         # finish
-        yield update_task
+        yield self.sleep(seconds=0.5)
 
         # Make sure we fired off an alert, and a followup
-        self.assertEquals(self.dispatcher.send_alerts.call_count, 2)
+        self.assertEquals(self.dispatcher.send_alerts._call_count, 2)
 
     @testing.gen_test
     def test_dispatch_with_alert(self):
         path = '/bar'
         self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
-        self.dispatcher.send_alerts = mock.MagicMock()
+        self.dispatcher.send_alerts = mock_tornado()
 
         # == First dispatch update with an error message - this one will wait
         # for 2 seconds.
@@ -131,33 +159,39 @@ class TestDispatcher(testing.AsyncTestCase):
         # finish
         yield update_task
 
-        self.dispatcher.send_alerts.assert_called_with(path)
+        self.assertEquals(self.dispatcher.send_alerts._last_args, (path,))
 
+    @testing.gen_test
     def test_send_alerts(self):
         # Prepare for testing.
         # '/bar' is configued to use 'email' in self.config
         path = '/bar'
         self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
         self.dispatcher.alerts['email'] = mock.MagicMock()
+        self.dispatcher.alerts['email'].alert = mock_tornado()
         self.dispatcher.alerts['custom'] = mock.MagicMock()
+        self.dispatcher.alerts['custom'].alert = mock_tornado()
 
         # Set data, and send the alert
         self.dispatcher._path_status(path, message='unittest')
-        self.dispatcher.send_alerts(path)
+        yield self.dispatcher.send_alerts(path)
 
         # Dispatcher should loop through everything that is under "alerter"
         # setting. The 'fake' alerter should not cause any problems.
 
         # Email...
-        self.dispatcher.alerts['email'].alert.assert_called_with(
-            path='/bar', state='Unknown', message='unittest',
-            params=self.config['/bar']['alerter']['email'])
+        self.assertEquals(
+            self.dispatcher.alerts['email'].alert._last_kwargs,
+            {'path': '/bar', 'state': 'Unknown', 'message': 'unittest',
+             'params': self.config['/bar']['alerter']['email']})
 
         # Testing for custom alerts not real until all alerts are standardized.
-        self.dispatcher.alerts['custom'].alert.assert_called_with(
-            path='/bar', state='Unknown', message='unittest',
-            params=self.config['/bar']['alerter']['custom'])
+        self.assertEquals(
+            self.dispatcher.alerts['custom'].alert._last_kwargs,
+            {'path': '/bar', 'state': 'Unknown', 'message': 'unittest',
+             'params': self.config['/bar']['alerter']['custom']})
 
+    @testing.gen_test
     def test_not_send_alerts(self):
         """Dispatcher should check if it's the alerting type."""
 
@@ -169,7 +203,7 @@ class TestDispatcher(testing.AsyncTestCase):
 
         # Set data, and send the alert
         self.dispatcher._path_status(path, message='unittest')
-        ret = self.dispatcher.send_alerts(path)
+        ret = yield self.dispatcher.send_alerts(path)
 
         self.assertFalse(ret)  # Did not send anything!
 
@@ -252,8 +286,8 @@ class TestWithHipchat(testing.AsyncTestCase):
     def test_dispatch_without_timeout(self):
         """Test dispatcher->HipchatAlerter.alert() chain."""
 
-        with mock.patch.object(rest.HipchatAlerter,
-                               '_alert') as mocked_alerter:
+        with mock.patch.object(rest.HipchatAlerter, '_alert',
+                               class_mock_tornado()) as mocked_alerter:
 
             self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
 
@@ -262,6 +296,7 @@ class TestWithHipchat(testing.AsyncTestCase):
 
             # Assertion below does really care about the 'conn' variable, but
             # it's required for assert_called_with to be exact.
-            mocked_alerter.assert_called_with(
-                '/foo', 'Error', 'Detailed reason',
-                self.config['/foo']['alerter']['hipchat'])
+            self.assertEquals(
+                mocked_alerter._last_args,
+                ('/foo', 'Error', 'Detailed reason',
+                 self.config['/foo']['alerter']['hipchat']))

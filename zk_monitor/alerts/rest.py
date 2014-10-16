@@ -16,6 +16,7 @@ import logging
 import urllib
 
 from tornado import httpclient
+from tornado import gen
 
 from zk_monitor.alerts import base
 from zk_monitor.monitor import states
@@ -73,6 +74,7 @@ class HipchatAlerter(base.AlerterBase):
 
         return styles.get(state) or default
 
+    @gen.coroutine
     def _alert(self, path, state, message, params):
         http_client = self._get_client()
 
