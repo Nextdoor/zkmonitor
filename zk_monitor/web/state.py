@@ -19,13 +19,13 @@ Includes the status for all of the monitored paths from the Monitor
 object as well as connection state information for Zookeeper.
 """
 
-__author__ = 'matt@nextdoor.com (Matt Wise)'
-
 import json
 
 from tornado import web
 
 from zk_monitor.version import __version__ as VERSION
+
+__author__ = 'matt@nextdoor.com (Matt Wise)'
 
 
 class StatusHandler(web.RequestHandler):

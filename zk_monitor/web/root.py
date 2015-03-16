@@ -16,11 +16,11 @@
 Handles generating the root index page for web requests.
 """
 
-__author__ = 'matt@nextdoor.com (Matt Wise)'
-
 from tornado import web
 
 from zk_monitor.version import __version__ as VERSION
+
+__author__ = 'matt@nextdoor.com (Matt Wise)'
 
 
 class RootHandler(web.RequestHandler):

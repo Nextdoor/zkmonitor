@@ -15,8 +15,6 @@
 """
 """
 
-__author__ = 'matt@nextdoor.com (Matt Wise)'
-
 import logging
 
 from tornado import web
@@ -26,6 +24,8 @@ from zk_monitor.web import root
 from zk_monitor.web import state
 
 log = logging.getLogger(__name__)
+
+__author__ = 'matt@nextdoor.com (Matt Wise)'
 
 
 def getApplication(ndsr, monitor, dispatcher):

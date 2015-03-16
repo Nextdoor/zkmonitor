@@ -234,7 +234,7 @@ class TestDispatcher(testing.AsyncTestCase):
         self.dispatcher.alerts['other'].status = mock.Mock(return_value='test')
 
         status = self.dispatcher.status()
-        self.assertEquals(status['alerters'], ['other', 'email'])
+        self.assertItemsEqual(status['alerters'], ['other', 'email'])
         self.assertTrue('alerting' in status)
 
 

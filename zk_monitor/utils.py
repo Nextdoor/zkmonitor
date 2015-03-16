@@ -17,13 +17,13 @@ Common location for utility functions used by various parts of the
 zk_monitor code. getXXXPath(), setupLogging, etc.
 """
 
-__author__ = 'Matt Wise (matt@nextdoor.com)'
-
 from logging import handlers
 import os
 import logging
 
 log = logging.getLogger(__name__)
+
+__author__ = 'Matt Wise (matt@nextdoor.com)'
 
 # Constants for some of the utilities below
 STATIC_PATH_NAME = 'static'
