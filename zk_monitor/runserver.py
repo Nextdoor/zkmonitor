@@ -16,8 +16,6 @@
 Main entry-point script for zk_mnonitor.
 """
 
-__author__ = 'Matt Wise (matt@nextdoor.com)'
-
 from tornado import ioloop
 import logging
 import nd_service_registry
@@ -32,6 +30,9 @@ from zk_monitor.version import __version__ as VERSION
 from zk_monitor.web import app
 
 log = logging.getLogger(__name__)
+
+
+__author__ = 'Matt Wise (matt@nextdoor.com)'
 
 
 # Initial option handler to set up the basic application environment.
