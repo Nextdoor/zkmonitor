@@ -59,8 +59,8 @@ class EmailAlerter(base.AlerterBase):
             params: Arbitrary data supplied by the configuration file for this
                     alerter. Currently expecting a string of the address.
         """
-        to_address = params
-        if not to_address:
+        emails = params
+        if not emails:
             log.error('Invalid email address from params: %s' % params)
             raise gen.Return()
 
@@ -74,12 +74,20 @@ class EmailAlerter(base.AlerterBase):
         # Create the Alert object. The object takes care of everything from
         # here so we store no reference to it (and let it get garbage
         # collected on its own later)
-        log.debug('Creating Email Alert Message: %s' % message)
-        EmailAlert(
-            subject=subject,
-            body=body,
-            email=to_address,
-            conn=self._mail_backend)
+
+        if type(emails) == str:
+            emails = re.compile('[, ]+').split(emails)
+
+        for addr in emails:
+            log.debug('Creating Email Alert: %s to %s' % (message, addr))
+            try:
+                EmailAlert(subject=subject,
+                           body=body,
+                           email=addr,
+                           conn=self._mail_backend)
+            except Exception as e:
+                log.critical('Exception raised while alerting %s to %s: %s' % (
+                    message, addr, e))
 
 
 class EmailAlert(object):
@@ -95,11 +103,6 @@ class EmailAlert(object):
         """
         log.info('[%s] Message Instance Created' % subject)
         self._subject = subject
-
-        if type(email) == str:
-            email = re.compile('[, ]+').split(email)
-        elif type(email) != list:
-            log.error('Input %s must be string, or array of strings' % email)
 
         # Send the message and register a callback to our helper method for
         # logging when the message has been sent.
