@@ -121,8 +121,11 @@ This page provides a simple live status of the app and its monitors.
     |   |   |
     |   |   +-- tornadomail.backends.smtp.EmailBackend()
     |   |
-    |   +-- alerts.rest.HipChatAlerter
-    |       | Sends Hipchat Alerts Asynchronously
+    |   +-- alerts.hipchat.HipChatAlerter
+    |   |   | Sends Hipchat Alerts Asynchronously
+    |   |
+    |   +-- alerts.slack.SlackAlerter
+    |       | Sends Slack Alerts Asynchronously
     |
     +-- cluster.State
     |   | Handles node-to-node communication via Zookeeper

@@ -28,6 +28,7 @@ HIPCHAT_API_URL = ('https://api.hipchat.com/v1/rooms/message'
 
 
 class HipchatAlerter(base.AlerterBase):
+
     """Send a notification to a HipChat room.
 
     For more details read the AlerterBase documentation.
@@ -45,7 +46,8 @@ class HipchatAlerter(base.AlerterBase):
     The "from" parameter will default to 'ZK Monitor' if not specified.
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super(HipchatAlerter, self).__init__(*args, **kwargs)
         self._async_client = None
 
     def _get_client(self):
@@ -58,11 +60,9 @@ class HipchatAlerter(base.AlerterBase):
     def style_from_state(self, state):
         """Returns color and icon based on `state`.
 
-        Args:
-            state: One of the monitor.states
-
-        Returns:
-            tuple of (color, icon)
+        :param monitor.states state: A state from :mod:`monitor.states`
+        :return: (color, icon)
+        :rtype: tuple
         """
 
         styles = {

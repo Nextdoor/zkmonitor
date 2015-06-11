@@ -8,7 +8,7 @@ from tornado.ioloop import IOLoop
 
 from zk_monitor.alerts import dispatcher
 from zk_monitor.alerts import email
-from zk_monitor.alerts import rest
+from zk_monitor.alerts import hipchat
 
 
 log = logging.getLogger(__name__)
@@ -286,7 +286,7 @@ class TestWithHipchat(testing.AsyncTestCase):
     def test_dispatch_without_timeout(self):
         """Test dispatcher->HipchatAlerter.alert() chain."""
 
-        with mock.patch.object(rest.HipchatAlerter, '_alert',
+        with mock.patch.object(hipchat.HipchatAlerter, '_alert',
                                class_mock_tornado()) as mocked_alerter:
 
             self.dispatcher = dispatcher.Dispatcher(self._cs, self.config)
