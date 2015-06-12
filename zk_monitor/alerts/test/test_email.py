@@ -26,6 +26,24 @@ class TestEmailAlerter(testing.AsyncTestCase):
             email='unit@test.com',
             conn=backend_instance)
 
+    @mock.patch('tornadomail.backends.smtp.EmailBackend')
+    @mock.patch('zk_monitor.alerts.email.EmailAlert')
+    def testAlertMany(self, mocked_alert, mocked_backend):
+        backend_instance = mocked_backend.return_value
+
+        self.alerter._alert('/foo', 'Broken',
+                            'Unit Test Message', 'unit@test.com, u2@test.com')
+        mocked_alert.assert_any_call(
+            subject='Warning! /foo has an alert!',
+            body='Unit Test Message\n/foo is in the Broken state.',
+            email='unit@test.com',
+            conn=backend_instance)
+        mocked_alert.assert_any_call(
+            subject='Warning! /foo has an alert!',
+            body='Unit Test Message\n/foo is in the Broken state.',
+            email='u2@test.com',
+            conn=backend_instance)
+
     @testing.gen_test
     def testNotValid(self):
         # _alert() should exit if "params" is not defined.
@@ -54,24 +72,7 @@ class TestEmailAlert(testing.AsyncTestCase):
         mocked_message.assert_called_with(
             subject=self.msg,
             body=self.body,
-            to=[self.email],
-            from_email='zk_monitor',
-            connection=self.conn)
-
-        email.EmailAlert(self.msg, self.body, ['multiple', 'emails'],
-                         self.conn)
-        mocked_message.assert_called_with(
-            subject=self.msg,
-            body=self.body,
-            to=['multiple', 'emails'],
-            from_email='zk_monitor',
-            connection=self.conn)
-
-        email.EmailAlert(self.msg, self.body, 'multiple, emails', self.conn)
-        mocked_message.assert_called_with(
-            subject=self.msg,
-            body=self.body,
-            to=['multiple', 'emails'],
+            to=self.email,
             from_email='zk_monitor',
             connection=self.conn)
 
