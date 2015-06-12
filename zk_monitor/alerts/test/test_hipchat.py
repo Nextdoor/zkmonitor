@@ -2,13 +2,13 @@ import mock
 
 from tornado.testing import unittest
 
-from zk_monitor.alerts import rest
+from zk_monitor.alerts import hipchat
 from zk_monitor.monitor import states
 
 
 class TestHipchatAlerter(unittest.TestCase):
     def setUp(self):
-        self.alerter = rest.HipchatAlerter()
+        self.alerter = hipchat.HipchatAlerter()
 
     def test_alert(self):
 

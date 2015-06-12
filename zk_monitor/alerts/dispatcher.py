@@ -19,7 +19,8 @@ from tornado import gen
 from tornado.ioloop import IOLoop
 
 from zk_monitor.alerts import email
-from zk_monitor.alerts import rest
+from zk_monitor.alerts import hipchat
+from zk_monitor.alerts import slack
 from zk_monitor.alerts import actions
 from zk_monitor.monitor import states
 
@@ -28,6 +29,7 @@ log = logging.getLogger(__name__)
 
 
 class Dispatcher(object):
+
     """Handles timing/cancelling/dispatching/dedup of all alerts to Alerter."""
 
     def __init__(self, cluster_state, config):
@@ -57,7 +59,8 @@ class Dispatcher(object):
 
         self.alerts = {}
         self.alerts['email'] = email.EmailAlerter()
-        self.alerts['hipchat'] = rest.HipchatAlerter()
+        self.alerts['hipchat'] = hipchat.HipchatAlerter()
+        self.alerts['slack'] = slack.SlackAlerter()
 
         self._begin_lock()
 
