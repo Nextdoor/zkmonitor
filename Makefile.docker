@@ -1,0 +1,82 @@
+# Standard settings that will be used later
+DOCKER := $(shell which docker)
+COMPOSE := $(shell which docker-compose)
+SHA1 := $(shell git rev-parse --short HEAD)
+BRANCH := $(shell basename $(shell git symbolic-ref HEAD))
+
+# DOCKER_TAG is only used in the `docker_tag` target below. Its used when you
+# take your built image, and you want to tag it prior to uploading it to a
+# target repository.
+DOCKER_TAG ?= $(SHA1)
+
+# Dynamically generate the DOCKER_IMAGE name from the name of our directory.
+# This can be overridden by setting the DOCKER_IMAGE environment variable in
+# your shell though.
+DOCKER_IMAGE ?= $(shell basename $(CURDIR) .git)
+
+# Default to using the Development Docker registry that users have LDAP
+# credentials for. In CircleCI though, this will be overwritten by setting the
+# environment variable before calling the Makefile.
+DOCKER_REGISTRY ?= dev-docker-registry.corp.nextdoor.com
+
+# Create two "fully qualified" image names. One is our "local build" name --
+# its used when we create, run, and stop the image locally. The second is our
+# "target build" name, which is used as a final destination when uploading the
+# image to a repository.
+LOCAL_DOCKER_NAME := "${DOCKER_IMAGE}:${SHA1}"
+TARGET_DOCKER_NAME := "${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG}"
+
+git_submodules:
+	git submodule sync && git submodule update --init
+
+# In Docker versions < 1.7, file 'mtime' is used to invalidate the cache:
+#   https://github.com/docker/docker/issues/4351
+# 
+# This little trick resets the mtime of the files once they've been checked out
+# to the last change-time stored in Git.
+git_timesync: git_submodules
+	@echo "Matching timestamps from Git history to improve Docker layer caching."
+	@$(CURDIR)/git-timesync/bin/git-timesync
+
+docker_login:
+	@echo "Logging into ${DOCKER_REGISTRY}"
+	@$(DOCKER) login \
+		-e "${DOCKER_EMAIL}" \
+		-u "${DOCKER_USER}" \
+	       	-p "$(value DOCKER_PASS)" "${DOCKER_REGISTRY}"
+
+docker_populate_cache:
+	@echo "Attempting to download ${DOCKER_IMAGE}"
+	@$(DOCKER) pull "${DOCKER_REGISTRY}/${DOCKER_IMAGE}" && \
+	      	$(DOCKER) images -a || exit 0
+
+docker_build:
+	@echo "Building ${LOCAL_DOCKER_NAME}"
+	@$(DOCKER) build -t "${LOCAL_DOCKER_NAME}" .
+
+docker_run: docker_stop
+	@echo "Running ${LOCAL_DOCKER_NAME}"
+	@$(DOCKER) run \
+		--name "${DOCKER_IMAGE}" \
+		--detach \
+		--publish 80:80 \
+		"${LOCAL_DOCKER_NAME}"
+
+docker_stop:
+	@echo "Stopping ${LOCAL_DOCKER_NAME}"
+	@$(DOCKER) stop "${DOCKER_IMAGE}" && $(DOCKER) rm "${DOCKER_IMAGE}" \
+		|| echo "No existing container running."
+
+docker_logs:
+	@echo "Running ${LOCAL_DOCKER_NAME}"
+	@$(DOCKER) logs -f "${DOCKER_IMAGE}"
+
+docker_tag:
+	@echo "Tagging ${LOCAL_DOCKER_NAME} as ${TARGET_DOCKER_NAME}"
+	@$(DOCKER) tag -f \
+		"${LOCAL_DOCKER_NAME}" \
+		"${TARGET_DOCKER_NAME}"
+
+docker_push: docker_tag
+	@echo "Pushing ${LOCAL_DOCKER_NAME} to ${TARGET_DOCKER_NAME}"
+	@$(DOCKER) push "${TARGET_DOCKER_NAME}"

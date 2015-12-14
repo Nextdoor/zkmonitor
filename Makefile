@@ -1,3 +1,5 @@
+include Makefile.docker  # Docker related. No app-related commands there.
+
 HERE = $(shell pwd)
 BIN = $(HERE)/bin
 

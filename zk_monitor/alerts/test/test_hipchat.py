@@ -20,7 +20,7 @@ class TestHipchatAlerter(unittest.TestCase):
             'token': 'hello :)',
         })
 
-        fetcher.fetch.assert_called_once()
+        self.assertEquals(1, fetcher.fetch.call_count)
 
     def test_single_client(self):
 
