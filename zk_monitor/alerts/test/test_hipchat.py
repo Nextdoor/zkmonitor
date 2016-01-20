@@ -1,5 +1,3 @@
-import logging
-
 import mock
 from tornado.testing import unittest
 

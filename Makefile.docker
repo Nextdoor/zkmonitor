@@ -43,7 +43,7 @@ docker_login:
 	@$(DOCKER) login \
 		-e "${DOCKER_EMAIL}" \
 		-u "${DOCKER_USER}" \
-	       	-p "$(value DOCKER_PASS)" "${DOCKER_REGISTRY}"
+		-p "$(value DOCKER_PASS)" "${DOCKER_REGISTRY}"
 
 docker_populate_cache:
 	@echo "Attempting to download ${DOCKER_IMAGE}"
