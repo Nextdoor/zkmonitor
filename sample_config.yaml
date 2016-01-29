@@ -1,0 +1,10 @@
+# Example Service
+/services/path/to/service:
+  alerter:
+    email:
+     - eng+zkmonitor@nextdoor.com
+    hipchat:
+     room: Engineering
+     token: crazytoken
+  cancel_timeout: 10
+  children: 1

@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 DOCKER_HOST_IP=$(route -n | awk '/UG[ \t]/{print $2}')
 ZOOKEEPER_HOST=${ZOOKEEPER_HOST:-$DOCKER_HOST_IP}
 ZOOKEEPER_PORT=${ZOOKEEPER_PORT:-2181}
