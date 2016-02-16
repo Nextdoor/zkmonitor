@@ -2,7 +2,7 @@
 /services/path/to/service:
   alerter:
     email:
-     - eng+zkmonitor@nextdoor.com
+     - on-call-team@yourcompany.com
     hipchat:
      room: Engineering
      token: crazytoken

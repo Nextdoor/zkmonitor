@@ -1,7 +1,7 @@
 FROM alpine:3.2
 MAINTAINER Mikhail Simin <mikhail@nextdoor.com>
 
-RUN apk add --update bash python py-pip py-yaml ca-certificates curl wget
+RUN apk add --update bash python py-pip py-yaml ca-certificates
 
 RUN mkdir -p /app /app/zk_monitor
 ADD ./* /app/
