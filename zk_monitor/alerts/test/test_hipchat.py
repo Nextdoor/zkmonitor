@@ -1,5 +1,4 @@
 import mock
-
 from tornado.testing import unittest
 
 from zk_monitor.alerts import hipchat
@@ -12,7 +11,7 @@ class TestHipchatAlerter(unittest.TestCase):
 
     def test_alert(self):
 
-        fetcher = mock.MagicMock()
+        fetcher = mock.Mock()
         self.alerter._get_client = mock.MagicMock(return_value=fetcher)
 
         self.alerter.alert('/foo', states.ERROR, 'Site is down.', {
@@ -20,7 +19,7 @@ class TestHipchatAlerter(unittest.TestCase):
             'token': 'hello :)',
         })
 
-        fetcher.fetch.assert_called_once()
+        self.assertEquals(fetcher.fetch.call_count, 1)
 
     def test_single_client(self):
 

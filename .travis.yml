@@ -1,7 +1,12 @@
+sudo: required
+
 language: python
+
+install:
+  - make build
+
 python:
   - "2.7"
   - "pypy"
-install:
-  - make -B build
+
 script: make test

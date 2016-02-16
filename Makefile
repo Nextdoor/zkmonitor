@@ -1,6 +1,8 @@
 HERE = $(shell pwd)
 BIN = $(HERE)/bin
 
+TAG = zkmonitor
+
 BUILD_DIRS = bin build include lib lib64 man share
 
 ZOOKEEPER = $(BIN)/zookeeper
@@ -19,6 +21,13 @@ build: .build
 	pip install -r requirements.test.txt
 	touch .build
 
+image:
+	docker build -t $(TAG) .
+
+run:
+	docker rm -f $(TAG) || echo 'Nothing is running.'
+	docker run --name "$(TAG)" $(TAG)
+
 clean:
 	rm -rf $(BUILD_DIRS)
 	rm .build
@@ -34,9 +43,11 @@ $(ZOOKEEPER):
 	mkdir -p $(BIN) && cd $(BIN) && curl -C - $(ZOOKEEPER_URL) | tar -zx
 	mv $(BIN)/zookeeper-$(ZOOKEEPER_VERSION) $(ZOOKEEPER_PATH)
 	chmod a+x $(ZOOKEEPER_PATH)/bin/zkServer.sh
+	cp $(ZOOKEEPER_PATH)/conf/zoo_sample.cfg $(ZOOKEEPER_PATH)/conf/zoo.cfg
 	@echo "Finished installing Zookeeper"
 
 zookeeper: $(ZOOKEEPER)
+	$(ZOOKEEPER_PATH)/bin/zkServer.sh start
 
 clean-zookeeper:
 	rm -rf zookeeper $(ZOOKEEPER_PATH)

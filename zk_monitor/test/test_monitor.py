@@ -102,7 +102,7 @@ class TestMonitor(testing.AsyncTestCase):
 
         # Kazoo cannot have any return value from the callback
         self.assertEquals(ret, None)
-        self.monitor.issue_dispatch_update.assert_called()
+        self.assertEquals(self.monitor.issue_dispatch_update.call_count, 1)
 
     @testing.gen_test
     def testPathUpdateCallbackWithAlerterParams(self):
@@ -116,7 +116,7 @@ class TestMonitor(testing.AsyncTestCase):
         self.monitor.issue_dispatch_update = mock.Mock()
         self.monitor._pathUpdateCallback({'path': '/foo'})
 
-        self.monitor.issue_dispatch_update.assert_called()
+        self.assertEquals(self.monitor.issue_dispatch_update.call_count, 1)
 
     def testVerifyCompliance(self):
         def side_effect(path):

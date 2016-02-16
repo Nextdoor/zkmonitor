@@ -1,0 +1,10 @@
+# Example Service
+/services/path/to/service:
+  alerter:
+    email:
+     - on-call-team@yourcompany.com
+    hipchat:
+     room: Engineering
+     token: crazytoken
+  cancel_timeout: 10
+  children: 1

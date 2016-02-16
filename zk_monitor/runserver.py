@@ -121,8 +121,8 @@ def main():
     getRootLogger(options.level, options.syslog)
     logging.getLogger('nd_service_registry.shims').setLevel(logging.WARNING)
 
+    log.info('Connecting to zookeeper via \'%s\'' % options.zookeeper)
     # Prep the config objects required to start up our web service
-    paths = getPathList(options.file)
     sr = nd_service_registry.KazooServiceRegistry(
         server=options.zookeeper,
         readonly=False,
@@ -135,6 +135,8 @@ def main():
     workspace = '%s/%s' % (options.cluster_prefix, options.cluster_name)
     cs = cluster.State(sr, workspace)
 
+    log.info('Parsing paths to watch from \'%s\'' % options.file)
+    paths = getPathList(options.file)
     # May instantiate this here instead of inside of Monitor
     dis = dispatcher.Dispatcher(
         cluster_state=cs,
