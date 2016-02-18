@@ -217,6 +217,7 @@ class Dispatcher(object):
         lock = self._lock.status()
 
         return {
+            'name': self._cluster_state._name,
             'alerters': alerter_list,
             'alerting': lock,
         }
