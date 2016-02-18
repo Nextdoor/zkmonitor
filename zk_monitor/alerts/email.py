@@ -13,6 +13,7 @@
 # Copyright 2014 Nextdoor.com, Inc
 
 import logging
+import os
 import re
 
 from tornado import gen
@@ -22,6 +23,9 @@ from tornadomail.backends import smtp
 from zk_monitor.alerts import base
 
 log = logging.getLogger(__name__)
+
+SMTP_HOST = os.getenv('SMTP_HOST', 'localhost')
+SMTP_PORT = os.getenv('SMTP_PORT', 25)
 
 
 class EmailAlerter(base.AlerterBase):
@@ -44,7 +48,8 @@ class EmailAlerter(base.AlerterBase):
     def _mail_backend(self):
         """Returns a single EmailBackend object every time its called"""
         if not self._saved_mail_backend:
-            self._saved_mail_backend = smtp.EmailBackend()
+            self._saved_mail_backend = smtp.EmailBackend(
+                SMTP_HOST, SMTP_PORT)
 
         return self._saved_mail_backend
 
