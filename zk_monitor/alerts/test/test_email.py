@@ -72,7 +72,7 @@ class TestEmailAlert(testing.AsyncTestCase):
         mocked_message.assert_called_with(
             subject=self.msg,
             body=self.body,
-            to=self.email,
+            to=[self.email],
             from_email='zk_monitor',
             connection=self.conn)
 

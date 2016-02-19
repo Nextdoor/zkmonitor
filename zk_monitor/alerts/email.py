@@ -115,7 +115,7 @@ class EmailAlert(object):
             subject=subject,
             body=body,
             from_email='zk_monitor',
-            to=email,
+            to=[email],  # "to" argument must be a list or tuple
             connection=conn)
         msg.send(callback=self._alertSent)
 
