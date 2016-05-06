@@ -21,11 +21,16 @@ their state, compliance is validated and the appropriate alerts are dispatched.
 
 import logging
 
-from tornado.ioloop import IOLoop
+from tornado.ioloop import IOLoop, PeriodicCallback
+import statsd
+import os
 
 from zk_monitor.monitor import states
 
 log = logging.getLogger(__name__)
+statsd_client = statsd.StatsClient(os.getenv('DOCKER_HOST_IP'), 8125)
+
+STATSD_UPDATE_MS = 20000
 
 
 class InvalidConfigException(Exception):
@@ -59,6 +64,9 @@ class Monitor(object):
 
         # Generate watches on those paths
         self._watchPaths(paths.keys())
+
+        # Send data to statsd periodically
+        PeriodicCallback(self._updateStatsd, STATSD_UPDATE_MS)
 
     def _stateListener(self, state):
         """Executed any time the connection state changes.
@@ -128,6 +136,24 @@ class Monitor(object):
             log.debug('Asking to watch %s' % path)
             self._ndsr.get(path, callback=self._pathUpdateCallback)
 
+    def _zkpath_to_statsd(self, path, prefix='zookeeper'):
+        """Convert ZK Path to statsd friendly path.
+
+        /services/somepath/us-west-2/database
+        zookeeper.services.somepath.us-west-2.database
+        """
+        return prefix + '.'.join(path.split('/'))
+
+    def _updateStatsd(self):
+        """Send children count of paths to statsd."""
+
+        for path, config in self._paths.items():
+            if 'children' not in config:
+                continue
+            count = len(self._ndsr.get(path)['children'])
+            path_statsd = self._zkpath_to_statsd(path)
+            statsd_client.gauge(path_statsd, count)
+
     def _pathUpdateCallback(self, data, _unit_test=False):
         """Executed when one of our watched paths is updated.
 
@@ -153,8 +179,12 @@ class Monitor(object):
 
         log.debug('Path %s changed from %s to %s' % (
             path, old_state, new_state))
+
         if self._should_update_dispatcher(old_state, new_state):
             self.issue_dispatch_update(path, new_state, reason)
+
+        self._updateStatsd()
+
 
     def issue_dispatch_update(self, path, new_state, reason):
         """Update dispatcher in a async-coroutine fashion.
