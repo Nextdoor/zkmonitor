@@ -1,8 +1,8 @@
 # Zookeeper Node Monitoring Daemon
 
 [![Build Status](https://travis-ci.org/Nextdoor/zkmonitor.svg?branch=master)](https://travis-ci.org/Nextdoor/zkmonitor)
-[![# of downloads](https://pypip.in/d/zk_monitor/badge.png)](https://pypi.python.org/pypi/zk\_monitor)
 [![pypy version](https://badge.fury.io/py/zk_monitor.png)](https://pypi.python.org/pypi/zk\_monitor)
+[![Docker Layers](https://images.microbadger.com/badges/image/nextdoor/zkmonitor.svg)](https://hub.docker.com/r/nextdoor/zkmonitor/)
 
 
 This is a simple daemon for monitoring particular Zookeeper nodes for
